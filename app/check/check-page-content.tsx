@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  FormEvent,
-  ReactNode,
-  RefObject,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { FormEvent, ReactNode, RefObject, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const constructionActions = [
@@ -178,7 +171,7 @@ function SectionBadge({ label }: { label: "필수" | "선택" }) {
   );
 }
 
-function scrollToSection(ref: RefObject<HTMLElement | null>) {
+function scrollToSection<T extends HTMLElement>(ref: RefObject<T | null>) {
   ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -379,7 +372,7 @@ function parseAiSummary(text: string, currentForm: FormState): FormState {
 export default function CheckPageContent() {
   const router = useRouter();
   const documentSectionRef = useRef<HTMLElement>(null);
-  const formSectionRef = useRef<HTMLElement>(null);
+  const formSectionRef = useRef<HTMLFormElement>(null);
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
@@ -679,12 +672,12 @@ export default function CheckPageContent() {
                   <input
                     type="text"
                     value={form.municipality}
-                    onChange={(event) => {
+                    onChange={(event) =>
                       setForm((current) => ({
                         ...current,
                         municipality: event.target.value,
-                      }));
-                    }}
+                      }))
+                    }
                     placeholder="예: 서울특별시 종로구"
                     className="input-field"
                   />
