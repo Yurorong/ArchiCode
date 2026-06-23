@@ -24,7 +24,7 @@ export default function PromptCopyCard({ promptText }: { promptText: string }) {
             AI에게 물어볼 프롬프트
           </h2>
           <p className="text-sm leading-6 text-slate-600">
-            모든 프로젝트 정보와 생성된 체크리스트 항목명을 포함한 질문 유도용
+            프로젝트 정보와 실제로 표시된 체크리스트 항목명을 포함한 복사용
             프롬프트입니다.
           </p>
         </div>
