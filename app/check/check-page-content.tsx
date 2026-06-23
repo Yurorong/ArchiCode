@@ -1,21 +1,43 @@
 "use client";
 
-import { FormEvent, ReactNode, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  RefObject,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 const constructionActions = [
-  { value: "신축", description: "새 건축물을 새로 짓는 경우" },
-  { value: "증축", description: "기존 건축물의 면적이나 규모를 늘리는 경우" },
-  { value: "개축", description: "기존 건축물을 일부 또는 전부 다시 짓는 경우" },
-  { value: "재축", description: "멸실된 건축물을 종전 규모 범위에서 다시 짓는 경우" },
-  { value: "이전", description: "건축물을 옮기거나 다시 배치하는 경우" },
-  { value: "대수선", description: "주요구조부 등을 큰 범위로 수선하거나 변경하는 경우" },
-  { value: "용도변경", description: "건축물의 사용 목적을 다른 용도로 바꾸는 경우" },
-  { value: "리모델링", description: "성능 개선이나 기능 향상을 위한 정비 공사" },
-  { value: "기타 / 잘 모르겠음", description: "행위 유형이 불명확하거나 복합적인 경우" },
+  {
+    value: "새로 짓기",
+    description: "빈 땅이나 철거 후 새 건물을 짓는 경우",
+  },
+  {
+    value: "기존 건물 넓히기",
+    description: "층수나 면적을 늘리는 경우",
+  },
+  {
+    value: "기존 건물 다시 짓기",
+    description: "기존 건물을 허물고 다시 짓는 경우",
+  },
+  {
+    value: "기존 건물 크게 고치기",
+    description: "뼈대나 주요 부분까지 손보는 공사",
+  },
+  {
+    value: "건물 쓰임 바꾸기",
+    description: "주택을 카페로 바꾸는 것처럼 용도를 바꾸는 경우",
+  },
+  {
+    value: "잘 모르겠음",
+    description: "어떤 종류의 공사인지 아직 정리되지 않은 경우",
+  },
 ] as const;
 
-const yesNoUnknownOptions = ["예", "아니오", "모름"] as const;
+const yesNoUnknownOptions = ["예", "아니오", "잘 모르겠음"] as const;
 const publicPrivateOptions = ["공공", "민간"] as const;
 
 type FormState = {
@@ -47,30 +69,30 @@ const initialForm: FormState = {
   zoningDistrict: "",
   useDistrict: "",
   useZone: "",
-  districtUnitPlan: "모름",
+  districtUnitPlan: "잘 모르겠음",
   siteArea: "",
   totalFloorArea: "",
   aboveGroundFloors: "",
   basementFloors: "",
   buildingHeight: "",
   publicPrivate: "민간",
-  constructionAction: "신축",
-  heritageRelated: "모름",
-  riverRelated: "모름",
-  schoolEnvironmentRelated: "모름",
-  mountainRelated: "모름",
-  farmlandRelated: "모름",
+  constructionAction: "잘 모르겠음",
+  heritageRelated: "잘 모르겠음",
+  riverRelated: "잘 모르겠음",
+  schoolEnvironmentRelated: "잘 모르겠음",
+  mountainRelated: "잘 모르겠음",
+  farmlandRelated: "잘 모르겠음",
 };
 
-const documentAnalysisPrompt = `첨부한 설계공모지침서, 과업이행서, 설계지침서 PDF 또는 HWP 문서를 읽고 아래 항목을 정리해줘.
+const documentAnalysisPrompt = `첨부한 문서를 읽고, 건축 법규 검토를 시작할 때 필요한 정보를 사람이 읽기 쉽게 정리해줘.
 
-원칙:
-- 문서에 근거가 있는 내용만 작성해줘.
-- 문서에서 확인되지 않는 정보는 "확인 필요"라고 써줘.
-- 법적 확정 판단이나 적법 여부 판단은 하지 말아줘.
-- 법규 검토에 영향을 줄 수 있는 문장이나 키워드는 마지막에 따로 정리해줘.
+작성 원칙:
+- 문서에 적혀 있는 내용만 바탕으로 정리해줘.
+- 확인되지 않는 정보는 "확인 필요"라고 적어줘.
+- 법적 확정 판단은 하지 말아줘.
+- 문서에서 법규 검토에 영향을 줄 수 있는 문장이나 표현이 있으면 마지막에 함께 정리해줘.
 
-아래 형식으로 사람이 읽기 쉽게 정리해줘:
+아래 형식으로 답변해줘.
 
 [기본 정보]
 - 사업명:
@@ -109,11 +131,17 @@ const documentAnalysisPrompt = `첨부한 설계공모지침서, 과업이행서
 
 const fieldLabelMap = {
   "대지 위치": "location",
+  "어디에 있는 땅인가요?": "location",
   "지역 / 지자체": "municipality",
+  "어느 지자체인가요?": "municipality",
   "건축물 용도": "buildingUse",
+  "어떤 건물인가요?": "buildingUse",
   "대지면적": "siteArea",
+  "땅 면적을 알고 있나요?": "siteArea",
   "연면적": "totalFloorArea",
+  "건물 전체 면적을 알고 있나요?": "totalFloorArea",
   "건축 행위": "constructionAction",
+  "무엇을 하려는 건가요?": "constructionAction",
   "용도지역": "zoningDistrict",
   "용도지구": "useDistrict",
   "용도구역": "useZone",
@@ -123,20 +151,18 @@ const fieldLabelMap = {
   "높이": "buildingHeight",
   "공공 / 민간": "publicPrivate",
   "문화재 관련": "heritageRelated",
+  "문화재 근처인가요?": "heritageRelated",
   "하천 관련": "riverRelated",
+  "하천 근처인가요?": "riverRelated",
   "학교환경 관련": "schoolEnvironmentRelated",
+  "학교 근처인가요?": "schoolEnvironmentRelated",
   "산지 관련": "mountainRelated",
+  "산지인가요?": "mountainRelated",
   "농지 관련": "farmlandRelated",
+  "농지인가요?": "farmlandRelated",
 } as const satisfies Record<string, keyof FormState>;
 
-const requiredFields: Array<keyof FormState> = [
-  "location",
-  "municipality",
-  "buildingUse",
-  "siteArea",
-  "totalFloorArea",
-  "constructionAction",
-];
+const minimumRequiredFields: Array<keyof FormState> = ["location", "buildingUse"];
 
 function SectionBadge({ label }: { label: "필수" | "선택" }) {
   return (
@@ -150,6 +176,10 @@ function SectionBadge({ label }: { label: "필수" | "선택" }) {
       {label}
     </span>
   );
+}
+
+function scrollToSection(ref: RefObject<HTMLElement | null>) {
+  ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function ChoiceGroup<T extends string>({
@@ -247,7 +277,38 @@ function normalizeChoice<T extends readonly string[]>(
   value: string,
   options: T,
 ): T[number] | undefined {
-  return options.find((option) => option === value.trim());
+  const trimmed = value.trim();
+
+  if (trimmed === "모름") {
+    return options.find((option) => option === "잘 모르겠음");
+  }
+
+  return options.find((option) => option === trimmed);
+}
+
+function normalizeConstructionAction(value: string) {
+  const trimmed = value.trim();
+
+  const matchMap: Record<string, FormState["constructionAction"]> = {
+    신축: "새로 짓기",
+    "새로 짓기": "새로 짓기",
+    증축: "기존 건물 넓히기",
+    "기존 건물 넓히기": "기존 건물 넓히기",
+    개축: "기존 건물 다시 짓기",
+    재축: "기존 건물 다시 짓기",
+    "기존 건물 다시 짓기": "기존 건물 다시 짓기",
+    대수선: "기존 건물 크게 고치기",
+    리모델링: "기존 건물 크게 고치기",
+    "기존 건물 크게 고치기": "기존 건물 크게 고치기",
+    용도변경: "건물 쓰임 바꾸기",
+    "건물 쓰임 바꾸기": "건물 쓰임 바꾸기",
+    이전: "잘 모르겠음",
+    기타: "잘 모르겠음",
+    "기타 / 잘 모르겠음": "잘 모르겠음",
+    "잘 모르겠음": "잘 모르겠음",
+  };
+
+  return matchMap[trimmed];
 }
 
 function parseAiSummary(text: string, currentForm: FormState): FormState {
@@ -278,15 +339,8 @@ function parseAiSummary(text: string, currentForm: FormState): FormState {
       continue;
     }
 
-    if (key === "districtUnitPlan") {
-      const normalized = normalizeChoice(value, yesNoUnknownOptions);
-      if (normalized) {
-        nextForm[key] = normalized;
-      }
-      continue;
-    }
-
     if (
+      key === "districtUnitPlan" ||
       key === "heritageRelated" ||
       key === "riverRelated" ||
       key === "schoolEnvironmentRelated" ||
@@ -309,9 +363,7 @@ function parseAiSummary(text: string, currentForm: FormState): FormState {
     }
 
     if (key === "constructionAction") {
-      const normalized = constructionActions.find(
-        (option) => option.value === value,
-      )?.value;
+      const normalized = normalizeConstructionAction(value);
       if (normalized) {
         nextForm[key] = normalized;
       }
@@ -326,6 +378,9 @@ function parseAiSummary(text: string, currentForm: FormState): FormState {
 
 export default function CheckPageContent() {
   const router = useRouter();
+  const documentSectionRef = useRef<HTMLElement>(null);
+  const formSectionRef = useRef<HTMLElement>(null);
+
   const [form, setForm] = useState<FormState>(initialForm);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
     "idle",
@@ -338,14 +393,14 @@ export default function CheckPageContent() {
   );
   const [validationMessage, setValidationMessage] = useState("");
   const [openSections, setOpenSections] = useState({
-    siteDetails: false,
+    landPlan: false,
     buildingDetails: false,
     specialConditions: false,
   });
 
-  const missingRequiredFields = useMemo(
+  const missingMinimumFields = useMemo(
     () =>
-      requiredFields.filter((field) => {
+      minimumRequiredFields.filter((field) => {
         const value = form[field];
         return typeof value === "string" ? value.trim() === "" : false;
       }),
@@ -355,10 +410,11 @@ export default function CheckPageContent() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (missingRequiredFields.length > 0) {
+    if (missingMinimumFields.length > 0) {
       setValidationMessage(
-        "기본 정보를 먼저 입력해야 검토 항목을 정리할 수 있습니다.",
+        "어디에 있는 땅인지와 어떤 건물인지 정도는 먼저 입력해 주세요. 나머지는 몰라도 괜찮습니다.",
       );
+      scrollToSection(formSectionRef);
       return;
     }
 
@@ -407,6 +463,7 @@ export default function CheckPageContent() {
     setForm((current) => parseAiSummary(pastedAiSummary, current));
     setApplyState("applied");
     setValidationMessage("");
+    scrollToSection(formSectionRef);
   };
 
   return (
@@ -418,15 +475,53 @@ export default function CheckPageContent() {
               건축 법규 검토 도우미
             </h1>
             <p className="max-w-3xl text-base leading-7 text-slate-600">
-              대지 정보와 건축물 조건을 입력하면 초기 설계 단계에서 확인해야 할
-              법규 검토 항목을 정리해줍니다.
+              건축을 잘 몰라도 괜찮습니다. 아는 정보만 입력하면 초기 단계에서
+              먼저 확인해야 할 법규 검토 항목을 정리해드립니다.
             </p>
           </div>
 
-          <section className="mt-8 rounded-[24px] border border-brand-100 bg-brand-50 p-6">
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <section className="rounded-[24px] border border-brand-100 bg-brand-50 p-6">
+              <div className="space-y-3">
+                <h2 className="text-xl font-bold text-slate-900">문서가 있어요</h2>
+                <p className="text-sm leading-6 text-slate-600">
+                  설계공모지침서, 과업이행서, 건축 관련 문서가 있다면
+                  GPT/Gemini로 필요한 정보를 먼저 정리할 수 있습니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollToSection(documentSectionRef)}
+                className="mt-5 inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
+              >
+                문서에서 정보 가져오기
+              </button>
+            </section>
+
+            <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
+              <div className="space-y-3">
+                <h2 className="text-xl font-bold text-slate-900">직접 입력할게요</h2>
+                <p className="text-sm leading-6 text-slate-600">
+                  아는 정보를 직접 입력해서 검토 항목을 정리합니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollToSection(formSectionRef)}
+                className="mt-5 inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
+              >
+                직접 입력 시작
+              </button>
+            </section>
+          </div>
+
+          <section
+            ref={documentSectionRef}
+            className="mt-8 rounded-[24px] border border-brand-100 bg-brand-50 p-6"
+          >
             <div className="space-y-3">
               <h2 className="text-xl font-bold text-slate-900">
-                지침서에서 정보 뽑아오기
+                문서에서 정보 가져오기
               </h2>
               <p className="text-sm leading-6 text-slate-600">
                 설계공모지침서나 과업이행서가 있다면 GPT 또는 Gemini에 문서를
@@ -464,13 +559,13 @@ export default function CheckPageContent() {
                 {copyState === "copied" &&
                   "프롬프트를 클립보드에 복사했습니다."}
                 {copyState === "failed" &&
-                  "브라우저에서 클립보드 복사를 허용하지 않아 복사에 실패했습니다."}
+                  "브라우저에서 복사를 허용하지 않아 프롬프트 복사에 실패했습니다."}
                 {copyState === "idle" &&
-                  "문서를 첨부한 뒤 이 프롬프트를 붙여 넣으면 필요한 정보를 먼저 정리받을 수 있습니다."}
+                  "문서를 첨부한 뒤 이 프롬프트를 붙여 넣으면 필요한 정보를 먼저 정리할 수 있습니다."}
               </p>
               <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                AI가 정리한 내용은 법적 확정 판단이 아니며, 지침서 원문과 공식
-                법령을 반드시 다시 확인해야 합니다.
+                AI가 정리한 내용은 법적 확정 판단이 아니며, 문서 원문과 공식
+                기준을 반드시 다시 확인해야 합니다.
               </p>
             </div>
 
@@ -478,9 +573,17 @@ export default function CheckPageContent() {
               <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
                 <h3 className="text-sm font-bold text-slate-900">사용 방법</h3>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                  <p>1. 설계공모지침서나 과업이행서를 GPT 또는 Gemini에 첨부합니다.</p>
-                  <p>2. 여기서 프롬프트를 복사해 대화창에 붙여 넣습니다.</p>
-                  <p>3. AI가 정리한 내용을 아래 붙여넣기 칸에 넣고 입력폼에 반영합니다.</p>
+                  <p>1. 아래 프롬프트를 복사하세요.</p>
+                  <p>
+                    2. GPT 또는 Gemini에 설계공모지침서나 과업이행서를
+                    첨부하세요.
+                  </p>
+                  <p>3. 복사한 프롬프트를 붙여넣고 실행하세요.</p>
+                  <p>4. AI가 정리한 내용을 다시 이곳에 붙여넣으세요.</p>
+                  <p>
+                    5. 입력값 채우기를 누르면 가능한 항목이 자동으로
+                    입력됩니다.
+                  </p>
                 </div>
               </div>
             ) : null}
@@ -496,11 +599,11 @@ export default function CheckPageContent() {
             <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
               <div className="space-y-2">
                 <h3 className="text-sm font-bold text-slate-900">
-                  AI 정리 결과 붙여넣기
+                  AI가 정리한 내용 붙여넣기
                 </h3>
                 <p className="text-sm leading-6 text-slate-600">
-                  GPT/Gemini가 정리해준 내용을 여기에 붙여넣은 뒤, 입력폼에
-                  채워 넣을 수 있습니다.
+                  GPT/Gemini가 정리한 내용을 붙여넣으면 입력칸을 채우는 데
+                  도움을 받을 수 있습니다.
                 </p>
               </div>
               <textarea
@@ -518,11 +621,11 @@ export default function CheckPageContent() {
                   onClick={handleApplyAiSummary}
                   className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
                 >
-                  입력폼에 반영하기
+                  입력값 채우기
                 </button>
                 <p className="text-sm text-slate-500">
                   {applyState === "applied" &&
-                    "붙여넣은 내용에서 찾을 수 있는 항목을 입력폼에 반영했습니다."}
+                    "붙여넣은 내용에서 찾을 수 있는 항목을 입력칸에 채웠습니다."}
                   {applyState === "empty" &&
                     "먼저 AI가 정리한 내용을 붙여넣어 주세요."}
                 </p>
@@ -530,7 +633,7 @@ export default function CheckPageContent() {
             </div>
           </section>
 
-          <form className="mt-8 grid gap-6" onSubmit={handleSubmit}>
+          <form ref={formSectionRef} className="mt-8 grid gap-6" onSubmit={handleSubmit}>
             {validationMessage ? (
               <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-900">
                 {validationMessage}
@@ -544,14 +647,16 @@ export default function CheckPageContent() {
                   <SectionBadge label="필수" />
                 </div>
                 <p className="text-sm leading-6 text-slate-600">
-                  프로젝트의 기본 정보만 먼저 입력하세요. 추가 조건은 필요할 때만
-                  선택적으로 입력할 수 있습니다.
+                  아는 정보만 먼저 입력해도 괜찮습니다. 모르는 항목은 비워두고
+                  나중에 다시 채워도 됩니다.
                 </p>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-semibold text-slate-700">대지 위치</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    어디에 있는 땅인가요?
+                  </span>
                   <input
                     type="text"
                     value={form.location}
@@ -569,7 +674,7 @@ export default function CheckPageContent() {
 
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-slate-700">
-                    지역 / 지자체
+                    어느 지자체인가요?
                   </span>
                   <input
                     type="text"
@@ -579,7 +684,6 @@ export default function CheckPageContent() {
                         ...current,
                         municipality: event.target.value,
                       }));
-                      setValidationMessage("");
                     }}
                     placeholder="예: 서울특별시 종로구"
                     className="input-field"
@@ -588,7 +692,7 @@ export default function CheckPageContent() {
 
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-slate-700">
-                    건축물 용도
+                    어떤 건물인가요?
                   </span>
                   <input
                     type="text"
@@ -600,45 +704,47 @@ export default function CheckPageContent() {
                       }));
                       setValidationMessage("");
                     }}
-                    placeholder="예: 제2종 근린생활시설"
+                    placeholder="예: 카페, 사무실, 도서관, 전시장, 주택"
                     className="input-field"
                   />
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">대지면적</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    땅 면적을 알고 있나요?
+                  </span>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.siteArea}
-                    onChange={(event) => {
+                    onChange={(event) =>
                       setForm((current) => ({
                         ...current,
                         siteArea: event.target.value,
-                      }));
-                      setValidationMessage("");
-                    }}
-                    placeholder="예: 1234.56"
+                      }))
+                    }
+                    placeholder="예: 1234.56㎡"
                     className="input-field"
                   />
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">연면적</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    건물 전체 면적을 알고 있나요?
+                  </span>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.totalFloorArea}
-                    onChange={(event) => {
+                    onChange={(event) =>
                       setForm((current) => ({
                         ...current,
                         totalFloorArea: event.target.value,
-                      }));
-                      setValidationMessage("");
-                    }}
-                    placeholder="예: 1234.56"
+                      }))
+                    }
+                    placeholder="예: 987.65㎡"
                     className="input-field"
                   />
                 </label>
@@ -646,7 +752,7 @@ export default function CheckPageContent() {
 
               <fieldset className="space-y-3">
                 <legend className="text-sm font-semibold text-slate-700">
-                  건축 행위
+                  무엇을 하려는 건가요?
                 </legend>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {constructionActions.map((option) => (
@@ -665,13 +771,12 @@ export default function CheckPageContent() {
                           value={option.value}
                           className="h-4 w-4 border-slate-300 text-brand-700 focus:ring-brand-500"
                           checked={form.constructionAction === option.value}
-                          onChange={() => {
+                          onChange={() =>
                             setForm((current) => ({
                               ...current,
                               constructionAction: option.value,
-                            }));
-                            setValidationMessage("");
-                          }}
+                            }))
+                          }
                         />
                         <span className="text-sm font-semibold text-slate-900">
                           {option.value}
@@ -687,20 +792,22 @@ export default function CheckPageContent() {
             </section>
 
             <AccordionSection
-              title="상세 대지 정보"
-              description="용도지역, 지구단위계획 여부처럼 토지 기준을 더 정확히 반영하고 싶을 때만 입력하세요."
+              title="토지이용계획 정보를 알고 있나요?"
+              description="모르면 비워두어도 됩니다. 토지이음에서 확인할 수 있는 정보입니다."
               badge="선택"
-              isOpen={openSections.siteDetails}
+              isOpen={openSections.landPlan}
               onToggle={() =>
                 setOpenSections((current) => ({
                   ...current,
-                  siteDetails: !current.siteDetails,
+                  landPlan: !current.landPlan,
                 }))
               }
             >
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">용도지역</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    용도지역
+                  </span>
                   <input
                     type="text"
                     value={form.zoningDistrict}
@@ -710,13 +817,15 @@ export default function CheckPageContent() {
                         zoningDistrict: event.target.value,
                       }))
                     }
-                    placeholder="예: 제2종 일반주거지역"
+                    placeholder="예: 제2종일반주거지역"
                     className="input-field"
                   />
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">용도지구</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    용도지구
+                  </span>
                   <input
                     type="text"
                     value={form.useDistrict}
@@ -732,7 +841,9 @@ export default function CheckPageContent() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">용도구역</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    용도구역
+                  </span>
                   <input
                     type="text"
                     value={form.useZone}
@@ -764,8 +875,8 @@ export default function CheckPageContent() {
             </AccordionSection>
 
             <AccordionSection
-              title="상세 건축물 정보"
-              description="층수나 높이, 공공 여부를 알고 있다면 더 구체적인 검토 항목을 정리하는 데 도움이 됩니다."
+              title="건물에 대해 더 알고 있나요?"
+              description="층수나 높이, 공공 사업 여부를 알고 있으면 더 구체적인 검토 항목을 보여드릴 수 있습니다."
               badge="선택"
               isOpen={openSections.buildingDetails}
               onToggle={() =>
@@ -777,7 +888,9 @@ export default function CheckPageContent() {
             >
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">지상층수</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    지상층수
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -794,7 +907,9 @@ export default function CheckPageContent() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">지하층수</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    지하층수
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -812,7 +927,7 @@ export default function CheckPageContent() {
 
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-slate-700">
-                    건축물 높이
+                    높이를 알고 있나요?
                   </span>
                   <input
                     type="number"
@@ -825,13 +940,13 @@ export default function CheckPageContent() {
                         buildingHeight: event.target.value,
                       }))
                     }
-                    placeholder="예: 18.50"
+                    placeholder="예: 18.50m"
                     className="input-field"
                   />
                 </label>
 
                 <ChoiceGroup
-                  legend="공공 / 민간"
+                  legend="공공 사업인가요, 민간 사업인가요?"
                   name="publicPrivate"
                   options={publicPrivateOptions}
                   selectedValue={form.publicPrivate}
@@ -847,8 +962,8 @@ export default function CheckPageContent() {
             </AccordionSection>
 
             <AccordionSection
-              title="특수 조건"
-              description="문화재, 하천, 산지 등 특수한 입지 조건이 있는 경우에만 입력하세요. 해당 없으면 비워두셔도 됩니다."
+              title="특별히 확인해야 할 주변 조건이 있나요?"
+              description="문화재, 하천, 학교, 산지, 농지와 관련된 땅은 추가 검토가 필요할 수 있습니다. 모르면 잘 모르겠음을 선택하세요."
               badge="선택"
               isOpen={openSections.specialConditions}
               onToggle={() =>
@@ -860,7 +975,7 @@ export default function CheckPageContent() {
             >
               <div className="grid gap-6 md:grid-cols-2">
                 <ChoiceGroup
-                  legend="문화재 관련 여부"
+                  legend="문화재 근처인가요?"
                   name="heritageRelated"
                   options={yesNoUnknownOptions}
                   selectedValue={form.heritageRelated}
@@ -873,7 +988,7 @@ export default function CheckPageContent() {
                 />
 
                 <ChoiceGroup
-                  legend="하천 관련 여부"
+                  legend="하천 근처인가요?"
                   name="riverRelated"
                   options={yesNoUnknownOptions}
                   selectedValue={form.riverRelated}
@@ -886,7 +1001,7 @@ export default function CheckPageContent() {
                 />
 
                 <ChoiceGroup
-                  legend="학교환경 관련 여부"
+                  legend="학교 근처인가요?"
                   name="schoolEnvironmentRelated"
                   options={yesNoUnknownOptions}
                   selectedValue={form.schoolEnvironmentRelated}
@@ -899,7 +1014,7 @@ export default function CheckPageContent() {
                 />
 
                 <ChoiceGroup
-                  legend="산지 관련 여부"
+                  legend="산지인가요?"
                   name="mountainRelated"
                   options={yesNoUnknownOptions}
                   selectedValue={form.mountainRelated}
@@ -912,7 +1027,7 @@ export default function CheckPageContent() {
                 />
 
                 <ChoiceGroup
-                  legend="농지 관련 여부"
+                  legend="농지인가요?"
                   name="farmlandRelated"
                   options={yesNoUnknownOptions}
                   selectedValue={form.farmlandRelated}
