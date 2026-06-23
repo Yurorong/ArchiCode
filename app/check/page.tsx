@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const constructionActions = [
@@ -69,6 +69,7 @@ function ChoiceGroup<T extends string>({
   selectedValue,
   onChange,
   columns = "md:grid-cols-3",
+  helperText,
 }: {
   legend: string;
   name: string;
@@ -76,10 +77,12 @@ function ChoiceGroup<T extends string>({
   selectedValue: T;
   onChange: (value: T) => void;
   columns?: string;
+  helperText?: string;
 }) {
   return (
     <fieldset className="space-y-3">
       <legend className="text-sm font-semibold text-slate-700">{legend}</legend>
+      {helperText ? <p className="text-xs leading-5 text-slate-500">{helperText}</p> : null}
       <div className={`grid gap-3 ${columns}`}>
         {options.map((option) => (
           <label
@@ -106,9 +109,68 @@ function ChoiceGroup<T extends string>({
   );
 }
 
+function SectionBadge({ label }: { label: "필수" | "선택" }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+        label === "필수"
+          ? "bg-brand-100 text-brand-700"
+          : "bg-slate-200 text-slate-700"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function AccordionSection({
+  title,
+  description,
+  badge,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  description: string;
+  badge: "필수" | "선택";
+  isOpen: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[24px] border border-slate-200 bg-slate-50/70">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+        aria-expanded={isOpen}
+      >
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+            <SectionBadge label={badge} />
+          </div>
+          <p className="text-sm leading-6 text-slate-600">{description}</p>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-brand-700">
+          {isOpen ? "접기" : "펼치기"}
+        </span>
+      </button>
+
+      {isOpen ? <div className="border-t border-slate-200 px-6 py-6">{children}</div> : null}
+    </section>
+  );
+}
+
 export default function CheckPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialForm);
+  const [openSections, setOpenSections] = useState({
+    siteDetails: false,
+    buildingDetails: false,
+    specialConditions: false,
+  });
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -146,25 +208,27 @@ export default function CheckPage() {
             <p className="text-sm font-semibold text-brand-700">1단계 입력 화면</p>
             <h1 className="text-3xl font-bold">건축 정보 입력</h1>
             <p className="text-base leading-7 text-slate-600">
-              입력 조건에 따라 결과가 달라지는 mock 체크리스트를 만들기 위한
-              프로젝트 정보를 입력해 주세요.
+              처음에는 꼭 필요한 정보만 먼저 입력하고, 추가 조건은 필요한 경우에만
+              펼쳐서 입력할 수 있습니다.
             </p>
           </div>
 
-          <form className="grid gap-8" onSubmit={handleSubmit}>
+          <form className="grid gap-6" onSubmit={handleSubmit}>
             <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">기본 정보</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  프로젝트의 위치와 규모, 주된 건축 행위를 입력합니다.
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-slate-900">기본 정보</h2>
+                  <SectionBadge label="필수" />
+                </div>
+                <p className="text-sm leading-6 text-slate-600">
+                  프로젝트의 기본 정보만 먼저 입력하세요. 추가 조건은 필요할 때만
+                  선택적으로 입력할 수 있습니다.
                 </p>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    대지 위치
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">대지 위치</span>
                   <input
                     type="text"
                     value={form.location}
@@ -216,9 +280,7 @@ export default function CheckPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    대지면적
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">대지면적</span>
                   <input
                     type="number"
                     min="0"
@@ -236,9 +298,7 @@ export default function CheckPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    연면적
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">연면적</span>
                   <input
                     type="number"
                     min="0"
@@ -255,21 +315,63 @@ export default function CheckPage() {
                   />
                 </label>
               </div>
+
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-slate-700">
+                  건축 행위
+                </legend>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {constructionActions.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-4 transition ${
+                        form.constructionAction === option.value
+                          ? "border-brand-500 bg-brand-50"
+                          : "border-slate-200 bg-white hover:border-brand-500 hover:bg-brand-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="constructionAction"
+                          value={option.value}
+                          className="h-4 w-4 border-slate-300 text-brand-700 focus:ring-brand-500"
+                          checked={form.constructionAction === option.value}
+                          onChange={() =>
+                            setForm((current) => ({
+                              ...current,
+                              constructionAction: option.value,
+                            }))
+                          }
+                        />
+                        <span className="text-sm font-semibold text-slate-900">
+                          {option.value}
+                        </span>
+                      </div>
+                      <span className="pl-7 text-sm leading-6 text-slate-600">
+                        {option.description}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             </section>
 
-            <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">대지 정보</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  토지이용계획과 지자체 기준 확인에 필요한 항목입니다.
-                </p>
-              </div>
-
+            <AccordionSection
+              title="상세 대지 정보"
+              description="용도지역, 지구단위계획 여부처럼 토지 기준을 더 정확히 반영하고 싶을 때만 입력하세요."
+              badge="선택"
+              isOpen={openSections.siteDetails}
+              onToggle={() =>
+                setOpenSections((current) => ({
+                  ...current,
+                  siteDetails: !current.siteDetails,
+                }))
+              }
+            >
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    용도지역
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">용도지역</span>
                   <input
                     type="text"
                     value={form.zoningDistrict}
@@ -285,9 +387,7 @@ export default function CheckPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    용도지구
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">용도지구</span>
                   <input
                     type="text"
                     value={form.useDistrict}
@@ -303,9 +403,7 @@ export default function CheckPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    용도구역
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">용도구역</span>
                   <input
                     type="text"
                     value={form.useZone}
@@ -331,23 +429,26 @@ export default function CheckPage() {
                       districtUnitPlan: value,
                     }))
                   }
+                  helperText="모르면 비워두셔도 됩니다. 토지이음에서 확인 가능합니다."
                 />
               </div>
-            </section>
+            </AccordionSection>
 
-            <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">건축물 정보</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  층수와 높이, 발주 성격에 따라 검토 항목이 달라질 수 있습니다.
-                </p>
-              </div>
-
+            <AccordionSection
+              title="상세 건축물 정보"
+              description="층수나 높이, 공공 여부를 알고 있다면 더 구체적인 체크리스트를 만드는 데 도움이 됩니다."
+              badge="선택"
+              isOpen={openSections.buildingDetails}
+              onToggle={() =>
+                setOpenSections((current) => ({
+                  ...current,
+                  buildingDetails: !current.buildingDetails,
+                }))
+              }
+            >
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    지상층수
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">지상층수</span>
                   <input
                     type="number"
                     min="0"
@@ -364,9 +465,7 @@ export default function CheckPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    지하층수
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">지하층수</span>
                   <input
                     type="number"
                     min="0"
@@ -416,65 +515,20 @@ export default function CheckPage() {
                   columns="md:grid-cols-2"
                 />
               </div>
-            </section>
+            </AccordionSection>
 
-            <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">건축 행위</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  행위 유형에 따라 결과 카드가 달라집니다.
-                </p>
-              </div>
-
-              <fieldset className="space-y-3">
-                <legend className="text-sm font-semibold text-slate-700">
-                  건축 행위 선택
-                </legend>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {constructionActions.map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-4 transition ${
-                        form.constructionAction === option.value
-                          ? "border-brand-500 bg-brand-50"
-                          : "border-slate-200 bg-white hover:border-brand-500 hover:bg-brand-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="constructionAction"
-                          value={option.value}
-                          className="h-4 w-4 border-slate-300 text-brand-700 focus:ring-brand-500"
-                          checked={form.constructionAction === option.value}
-                          onChange={() =>
-                            setForm((current) => ({
-                              ...current,
-                              constructionAction: option.value,
-                            }))
-                          }
-                        />
-                        <span className="text-sm font-semibold text-slate-900">
-                          {option.value}
-                        </span>
-                      </div>
-                      <span className="pl-7 text-sm leading-6 text-slate-600">
-                        {option.description}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </section>
-
-            <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">특수 조건</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  개별 인허가나 추가 협의 가능성이 있는 조건입니다.
-                </p>
-              </div>
-
+            <AccordionSection
+              title="특수 조건"
+              description="문화재, 하천, 산지 등 특수한 입지 조건이 있는 경우에만 입력하세요. 해당 없으면 비워두셔도 됩니다."
+              badge="선택"
+              isOpen={openSections.specialConditions}
+              onToggle={() =>
+                setOpenSections((current) => ({
+                  ...current,
+                  specialConditions: !current.specialConditions,
+                }))
+              }
+            >
               <div className="grid gap-6 md:grid-cols-2">
                 <ChoiceGroup
                   legend="문화재 관련 여부"
@@ -541,7 +595,7 @@ export default function CheckPage() {
                   }
                 />
               </div>
-            </section>
+            </AccordionSection>
 
             <div>
               <button
