@@ -55,6 +55,12 @@ type FormState = {
   farmlandRelated: (typeof yesNoUnknownOptions)[number];
 };
 
+type ParsedSummaryResult = {
+  form: FormState;
+  recognized: Array<{ label: string; value: string }>;
+  missing: string[];
+};
+
 const initialForm: FormState = {
   location: "",
   municipality: "",
@@ -88,72 +94,95 @@ const documentAnalysisPrompt = `첨부한 문서를 읽고, 건축 법규 검토
 아래 형식으로 답변해줘.
 
 [기본 정보]
-- 사업명:
-- 대지 위치:
-- 지역 / 지자체:
-- 건축물 용도:
-- 대지면적:
-- 연면적:
-- 건축 행위:
+사업명:
+대지 위치:
+지역 / 지자체:
+건축물 용도:
+대지면적:
+연면적:
+건축 행위:
 
 [대지 정보]
-- 용도지역:
-- 용도지구:
-- 용도구역:
-- 지구단위계획구역 여부:
+용도지역:
+용도지구:
+용도구역:
+지구단위계획구역 여부:
 
 [건축물 정보]
-- 지상층수:
-- 지하층수:
-- 높이:
-- 공공 / 민간:
+지상층수:
+지하층수:
+건축물 높이:
+공공 / 민간:
 
 [특수 조건]
-- 문화재 관련:
-- 하천 관련:
-- 학교환경 관련:
-- 산지 관련:
-- 농지 관련:
+문화재 관련:
+하천 관련:
+학교환경 관련:
+산지 관련:
+농지 관련:
 
 [법규 검토에 참고할 문장]
-- 
 
 [확인 필요]
-- 문서에서 확인되지 않은 정보:
+문서에서 확인되지 않은 정보:
 `;
 
-const fieldLabelMap = {
-  "대지 위치": "location",
-  "어디에 있는 땅인가요?": "location",
-  "지역 / 지자체": "municipality",
-  "어느 지자체인가요?": "municipality",
-  "건축물 용도": "buildingUse",
-  "어떤 건물인가요?": "buildingUse",
-  "대지면적": "siteArea",
-  "땅 면적을 알고 있나요?": "siteArea",
-  "연면적": "totalFloorArea",
-  "건물 전체 면적을 알고 있나요?": "totalFloorArea",
-  "건축 행위": "constructionAction",
-  "무엇을 하려는 건가요?": "constructionAction",
-  "용도지역": "zoningDistrict",
-  "용도지구": "useDistrict",
-  "용도구역": "useZone",
-  "지구단위계획구역 여부": "districtUnitPlan",
-  "지상층수": "aboveGroundFloors",
-  "지하층수": "basementFloors",
-  "높이": "buildingHeight",
-  "공공 / 민간": "publicPrivate",
-  "문화재 관련": "heritageRelated",
-  "문화재 근처인가요?": "heritageRelated",
-  "하천 관련": "riverRelated",
-  "하천 근처인가요?": "riverRelated",
-  "학교환경 관련": "schoolEnvironmentRelated",
-  "학교 근처인가요?": "schoolEnvironmentRelated",
-  "산지 관련": "mountainRelated",
-  "산지인가요?": "mountainRelated",
-  "농지 관련": "farmlandRelated",
-  "농지인가요?": "farmlandRelated",
-} as const satisfies Record<string, keyof FormState>;
+const fieldAliases = {
+  location: ["대지 위치", "위치", "사업 위치", "대상지", "주소"],
+  municipality: ["지역 / 지자체", "지역", "지자체", "관할 지자체", "발주 지자체"],
+  buildingUse: ["건축물 용도", "건축 용도", "용도", "시설 용도", "건물 용도"],
+  siteArea: ["대지면적", "대지 면적", "부지면적", "부지 면적", "사업부지면적"],
+  totalFloorArea: ["연면적", "연 면적", "전체면적", "건축 연면적"],
+  aboveGroundFloors: ["지상층수", "지상 층수", "지상", "층수"],
+  basementFloors: ["지하층수", "지하 층수", "지하"],
+  buildingHeight: ["건축물 높이", "높이", "최고높이"],
+  constructionAction: ["건축 행위", "행위", "사업 유형", "공사 유형"],
+  publicPrivate: ["공공 / 민간", "공공", "민간", "발주 구분", "사업 구분"],
+  zoningDistrict: ["용도지역"],
+  useDistrict: ["용도지구"],
+  useZone: ["용도구역"],
+  districtUnitPlan: ["지구단위계획구역 여부"],
+  heritageRelated: ["문화재 관련", "문화재 근처인가요"],
+  riverRelated: ["하천 관련", "하천 근처인가요"],
+  schoolEnvironmentRelated: ["학교환경 관련", "학교 근처인가요"],
+  mountainRelated: ["산지 관련", "산지인가요"],
+  farmlandRelated: ["농지 관련", "농지인가요"],
+} as const satisfies Record<keyof FormState, readonly string[]>;
+
+const displayLabels: Record<keyof FormState, string> = {
+  location: "대지 위치",
+  municipality: "지역 / 지자체",
+  buildingUse: "건축물 용도",
+  zoningDistrict: "용도지역",
+  useDistrict: "용도지구",
+  useZone: "용도구역",
+  districtUnitPlan: "지구단위계획구역 여부",
+  siteArea: "대지면적",
+  totalFloorArea: "연면적",
+  aboveGroundFloors: "지상층수",
+  basementFloors: "지하층수",
+  buildingHeight: "건축물 높이",
+  publicPrivate: "공공 / 민간",
+  constructionAction: "건축 행위",
+  heritageRelated: "문화재 관련",
+  riverRelated: "하천 관련",
+  schoolEnvironmentRelated: "학교환경 관련",
+  mountainRelated: "산지 관련",
+  farmlandRelated: "농지 관련",
+};
+
+const summaryTargetFields: Array<keyof FormState> = [
+  "location",
+  "municipality",
+  "buildingUse",
+  "siteArea",
+  "totalFloorArea",
+  "constructionAction",
+  "publicPrivate",
+  "buildingHeight",
+];
+
+const summaryTargetLabels = summaryTargetFields.map((field) => displayLabels[field]);
 
 const minimumRequiredFields: Array<keyof FormState> = ["location", "buildingUse"];
 
@@ -279,94 +308,186 @@ function normalizeChoice<T extends readonly string[]>(
   return options.find((option) => option === trimmed);
 }
 
-function normalizeConstructionAction(value: string) {
-  const trimmed = value.trim();
+function normalizeYesNoUnknown(value: string): FormState["districtUnitPlan"] | undefined {
+  const normalized = value.replace(/\s/g, "");
+
+  if (["예", "있음", "해당", "해당있음", "o", "O"].includes(normalized)) {
+    return "예";
+  }
+
+  if (["아니오", "없음", "해당없음", "x", "X"].includes(normalized)) {
+    return "아니오";
+  }
+
+  if (
+    ["모름", "미상", "불명", "잘모르겠음", "확인필요"].includes(normalized)
+  ) {
+    return "잘 모르겠음";
+  }
+
+  return normalizeChoice(value, yesNoUnknownOptions);
+}
+
+function normalizePublicPrivate(value: string): FormState["publicPrivate"] | undefined {
+  if (value.includes("공공")) {
+    return "공공";
+  }
+
+  if (value.includes("민간")) {
+    return "민간";
+  }
+
+  return normalizeChoice(value, publicPrivateOptions);
+}
+
+function normalizeConstructionAction(
+  value: string,
+): FormState["constructionAction"] | undefined {
+  const trimmed = value.replace(/\s/g, "");
 
   const matchMap: Record<string, FormState["constructionAction"]> = {
     신축: "새로 짓기",
-    "새로 짓기": "새로 짓기",
+    새로짓기: "새로 짓기",
     증축: "기존 건물 넓히기",
-    "기존 건물 넓히기": "기존 건물 넓히기",
+    기존건물넓히기: "기존 건물 넓히기",
     개축: "기존 건물 다시 짓기",
     재축: "기존 건물 다시 짓기",
-    "기존 건물 다시 짓기": "기존 건물 다시 짓기",
+    기존건물다시짓기: "기존 건물 다시 짓기",
     대수선: "기존 건물 크게 고치기",
     리모델링: "기존 건물 크게 고치기",
-    "기존 건물 크게 고치기": "기존 건물 크게 고치기",
+    기존건물크게고치기: "기존 건물 크게 고치기",
     용도변경: "건물 쓰임 바꾸기",
-    "건물 쓰임 바꾸기": "건물 쓰임 바꾸기",
+    건물쓰임바꾸기: "건물 쓰임 바꾸기",
     이전: "잘 모르겠음",
     기타: "잘 모르겠음",
-    "기타 / 잘 모르겠음": "잘 모르겠음",
-    "잘 모르겠음": "잘 모르겠음",
+    잘모르겠음: "잘 모르겠음",
   };
 
   return matchMap[trimmed];
 }
 
-function parseAiSummary(text: string, currentForm: FormState): FormState {
+function normalizeNumericArea(value: string) {
+  const match = value.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return match ? match[0] : "";
+}
+
+function normalizeFloorValue(value: string) {
+  const trimmed = value.replace(/\s/g, "");
+
+  if (["없음", "해당없음", "없다", "무", "none", "None"].includes(trimmed)) {
+    return "";
+  }
+
+  const match = trimmed.match(/\d+/);
+  return match ? match[0] : "";
+}
+
+function normalizeHeightValue(value: string) {
+  if (value.includes("확인 필요")) {
+    return "";
+  }
+
+  return normalizeNumericArea(value);
+}
+
+function cleanLine(line: string) {
+  return line
+    .replace(/^[\-\*\u2022]\s*/, "")
+    .replace(/\t/g, " ")
+    .trim();
+}
+
+function splitLabelValue(line: string): { label: string; value: string } | null {
+  const cleaned = cleanLine(line);
+  const match = cleaned.match(/^(.+?)\s*(?::|：|-|｜|\|)\s*(.+)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    label: match[1].trim(),
+    value: match[2].trim(),
+  };
+}
+
+function getFieldByLabel(label: string): keyof FormState | undefined {
+  return (Object.keys(fieldAliases) as Array<keyof FormState>).find((field) =>
+    (fieldAliases[field] as readonly string[]).includes(label),
+  );
+}
+
+function parseFieldValue(field: keyof FormState, value: string): string | undefined {
+  if (!value || value.includes("확인 필요")) {
+    return undefined;
+  }
+
+  switch (field) {
+    case "siteArea":
+    case "totalFloorArea":
+      return normalizeNumericArea(value);
+    case "aboveGroundFloors":
+    case "basementFloors":
+      return normalizeFloorValue(value);
+    case "buildingHeight":
+      return normalizeHeightValue(value);
+    case "districtUnitPlan":
+    case "heritageRelated":
+    case "riverRelated":
+    case "schoolEnvironmentRelated":
+    case "mountainRelated":
+    case "farmlandRelated":
+      return normalizeYesNoUnknown(value);
+    case "publicPrivate":
+      return normalizePublicPrivate(value);
+    case "constructionAction":
+      return normalizeConstructionAction(value);
+    default:
+      return value.trim();
+  }
+}
+
+function parseAiSummary(text: string, currentForm: FormState): ParsedSummaryResult {
   const nextForm = { ...currentForm };
+  const recognizedMap = new Map<string, string>();
+  const missingSet = new Set<string>();
   const lines = text.split(/\r?\n/);
 
   for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line.startsWith("-")) {
+    const parsed = splitLabelValue(rawLine);
+    if (!parsed) {
       continue;
     }
 
-    const withoutBullet = line.replace(/^-+\s*/, "");
-    const separatorIndex = withoutBullet.indexOf(":");
-    if (separatorIndex === -1) {
+    const field = getFieldByLabel(parsed.label);
+    if (!field) {
       continue;
     }
 
-    const label = withoutBullet.slice(0, separatorIndex).trim();
-    const value = withoutBullet.slice(separatorIndex + 1).trim();
-
-    if (!value || value === "확인 필요") {
+    if (!parsed.value || parsed.value.includes("확인 필요")) {
+      missingSet.add(displayLabels[field]);
       continue;
     }
 
-    const key = fieldLabelMap[label as keyof typeof fieldLabelMap];
-    if (!key) {
+    const normalizedValue = parseFieldValue(field, parsed.value);
+
+    if (!normalizedValue) {
+      missingSet.add(displayLabels[field]);
       continue;
     }
 
-    if (
-      key === "districtUnitPlan" ||
-      key === "heritageRelated" ||
-      key === "riverRelated" ||
-      key === "schoolEnvironmentRelated" ||
-      key === "mountainRelated" ||
-      key === "farmlandRelated"
-    ) {
-      const normalized = normalizeChoice(value, yesNoUnknownOptions);
-      if (normalized) {
-        nextForm[key] = normalized;
-      }
-      continue;
-    }
-
-    if (key === "publicPrivate") {
-      const normalized = normalizeChoice(value, publicPrivateOptions);
-      if (normalized) {
-        nextForm[key] = normalized;
-      }
-      continue;
-    }
-
-    if (key === "constructionAction") {
-      const normalized = normalizeConstructionAction(value);
-      if (normalized) {
-        nextForm[key] = normalized;
-      }
-      continue;
-    }
-
-    nextForm[key] = value;
+    nextForm[field] = normalizedValue as never;
+    recognizedMap.set(displayLabels[field], normalizedValue);
   }
 
-  return nextForm;
+  return {
+    form: nextForm,
+    recognized: Array.from(recognizedMap.entries()).map(([label, value]) => ({
+      label,
+      value,
+    })),
+    missing: Array.from(missingSet),
+  };
 }
 
 export default function CheckPageContent() {
@@ -381,9 +502,13 @@ export default function CheckPageContent() {
   const [showPromptPreview, setShowPromptPreview] = useState(false);
   const [showPromptGuide, setShowPromptGuide] = useState(false);
   const [pastedAiSummary, setPastedAiSummary] = useState("");
-  const [applyState, setApplyState] = useState<"idle" | "applied" | "empty">(
-    "idle",
-  );
+  const [applyState, setApplyState] = useState<
+    "idle" | "applied" | "partial" | "empty" | "not-found"
+  >("idle");
+  const [recognizedItems, setRecognizedItems] = useState<
+    Array<{ label: string; value: string }>
+  >([]);
+  const [missingItems, setMissingItems] = useState<string[]>([]);
   const [validationMessage, setValidationMessage] = useState("");
   const [openSections, setOpenSections] = useState({
     landPlan: false,
@@ -450,11 +575,26 @@ export default function CheckPageContent() {
   const handleApplyAiSummary = () => {
     if (!pastedAiSummary.trim()) {
       setApplyState("empty");
+      setRecognizedItems([]);
+      setMissingItems([]);
       return;
     }
 
-    setForm((current) => parseAiSummary(pastedAiSummary, current));
-    setApplyState("applied");
+    const result = parseAiSummary(pastedAiSummary, form);
+
+    if (result.recognized.length === 0) {
+      setApplyState("not-found");
+      setRecognizedItems([]);
+      setMissingItems(result.missing);
+      return;
+    }
+
+    setForm(result.form);
+    setRecognizedItems(
+      result.recognized.filter((item) => summaryTargetLabels.includes(item.label)),
+    );
+    setMissingItems(result.missing);
+    setApplyState(result.missing.length > 0 ? "partial" : "applied");
     setValidationMessage("");
     scrollToSection(formSectionRef);
   };
@@ -549,8 +689,7 @@ export default function CheckPageContent() {
 
             <div className="mt-4 space-y-2">
               <p className="text-sm text-slate-500">
-                {copyState === "copied" &&
-                  "프롬프트를 클립보드에 복사했습니다."}
+                {copyState === "copied" && "프롬프트를 클립보드에 복사했습니다."}
                 {copyState === "failed" &&
                   "브라우저에서 복사를 허용하지 않아 프롬프트 복사에 실패했습니다."}
                 {copyState === "idle" &&
@@ -567,16 +706,10 @@ export default function CheckPageContent() {
                 <h3 className="text-sm font-bold text-slate-900">사용 방법</h3>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
                   <p>1. 아래 프롬프트를 복사하세요.</p>
-                  <p>
-                    2. GPT 또는 Gemini에 설계공모지침서나 과업이행서를
-                    첨부하세요.
-                  </p>
+                  <p>2. GPT 또는 Gemini에 설계공모지침서나 과업이행서를 첨부하세요.</p>
                   <p>3. 복사한 프롬프트를 붙여넣고 실행하세요.</p>
                   <p>4. AI가 정리한 내용을 다시 이곳에 붙여넣으세요.</p>
-                  <p>
-                    5. 입력값 채우기를 누르면 가능한 항목이 자동으로
-                    입력됩니다.
-                  </p>
+                  <p>5. 입력값 채우기를 누르면 가능한 항목이 자동으로 입력됩니다.</p>
                 </div>
               </div>
             ) : null}
@@ -604,8 +737,21 @@ export default function CheckPageContent() {
                 onChange={(event) => {
                   setPastedAiSummary(event.target.value);
                   setApplyState("idle");
+                  setRecognizedItems([]);
+                  setMissingItems([]);
                 }}
-                placeholder="GPT/Gemini가 정리해준 내용을 여기에 붙여넣으세요."
+                placeholder={`[기본 정보]
+사업명: 낙동문화 에코뮤지엄 개경포빛 복합문화센터 건립사업
+대지 위치: 경상북도 고령군 개진면 오사리 541-12번지 일원, 개경포기념공원
+지역 / 지자체: 경상북도 고령군
+건축 용도: 문화 및 집회시설
+대지면적: 6,105.0㎡
+연면적: 1,405.91㎡
+지상층수: 3층
+지하층수: 없음
+건축물 높이: 확인 필요
+건축 행위: 신축
+공공 / 민간: 공공`}
                 className="input-field mt-4 min-h-40 resize-y"
               />
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -618,11 +764,45 @@ export default function CheckPageContent() {
                 </button>
                 <p className="text-sm text-slate-500">
                   {applyState === "applied" &&
-                    "붙여넣은 내용에서 찾을 수 있는 항목을 입력칸에 채웠습니다."}
+                    "입력칸에 값을 채웠습니다."}
+                  {applyState === "partial" &&
+                    "일부 항목을 입력했습니다. 비어 있는 항목은 직접 확인해주세요."}
                   {applyState === "empty" &&
                     "먼저 AI가 정리한 내용을 붙여넣어 주세요."}
+                  {applyState === "not-found" &&
+                    "입력값을 찾지 못했습니다. AI 정리 결과의 항목명을 확인해주세요."}
                 </p>
               </div>
+
+              {(recognizedItems.length > 0 || missingItems.length > 0) && (
+                <div className="mt-5 grid gap-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                  {recognizedItems.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">인식된 항목</h4>
+                      <ul className="mt-2 grid gap-2 text-sm text-slate-700">
+                        {recognizedItems.map((item) => (
+                          <li key={`${item.label}-${item.value}`} className="rounded-xl bg-white px-3 py-2">
+                            {item.label}: {item.value}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {missingItems.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">확인 필요</h4>
+                      <ul className="mt-2 grid gap-2 text-sm text-slate-700">
+                        {missingItems.map((item) => (
+                          <li key={item} className="rounded-xl bg-white px-3 py-2">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
