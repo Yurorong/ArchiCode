@@ -12,7 +12,7 @@ export default function HomePage() {
               </span>
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold leading-tight md:text-5xl">
-                  건축 법규 검토 보조 앱
+                  건축 법규 검토 보조
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-white/88">
                   대지 정보와 건축물 정보를 입력하면 관련 법규 체크리스트를
@@ -34,8 +34,8 @@ export default function HomePage() {
                 </p>
                 <div className="mt-5 space-y-4 text-sm leading-7 text-slate-700">
                   <p>1. 대지 위치와 건축 개요를 입력합니다.</p>
-                  <p>2. 검토에 필요한 기본 정보를 한 화면에서 정리합니다.</p>
-                  <p>3. 다음 단계에서 법규 체크리스트 기능을 확장할 수 있습니다.</p>
+                  <p>2. 결과 화면에서 mock 법규 체크리스트를 확인합니다.</p>
+                  <p>3. 이후 단계에서 AI 연동과 법령 검토 기능을 확장할 수 있습니다.</p>
                 </div>
               </div>
             </div>
