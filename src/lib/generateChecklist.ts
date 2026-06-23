@@ -29,6 +29,8 @@ export type ProjectInfo = {
   farmlandRelated: YesNoUnknown;
 };
 
+const unknownValue = "확인 필요";
+
 export function parseProjectInfo(params: {
   location?: string;
   municipality?: string;
@@ -50,24 +52,33 @@ export function parseProjectInfo(params: {
   mountainRelated?: string;
   farmlandRelated?: string;
 }): ProjectInfo {
-  const normalizeChoice = (value?: string): YesNoUnknown =>
-    value === "예" || value === "아니오" || value === "모름" ? value : "모름";
+  const normalizeChoice = (value?: string): YesNoUnknown => {
+    if (value === "예" || value === "아니오" || value === "잘 모르겠음") {
+      return value;
+    }
+
+    if (value === "모름") {
+      return "잘 모르겠음";
+    }
+
+    return "잘 모르겠음";
+  };
 
   return {
-    location: params.location || "미입력",
-    municipality: params.municipality || "미입력",
-    buildingUse: params.buildingUse || "미입력",
-    zoningDistrict: params.zoningDistrict || "미입력",
-    useDistrict: params.useDistrict || "미입력",
-    useZone: params.useZone || "미입력",
+    location: params.location || unknownValue,
+    municipality: params.municipality || unknownValue,
+    buildingUse: params.buildingUse || unknownValue,
+    zoningDistrict: params.zoningDistrict || unknownValue,
+    useDistrict: params.useDistrict || unknownValue,
+    useZone: params.useZone || unknownValue,
     districtUnitPlan: normalizeChoice(params.districtUnitPlan),
-    siteArea: params.siteArea || "미입력",
-    totalFloorArea: params.totalFloorArea || "미입력",
-    aboveGroundFloors: params.aboveGroundFloors || "미입력",
-    basementFloors: params.basementFloors || "미입력",
-    buildingHeight: params.buildingHeight || "미입력",
+    siteArea: params.siteArea || unknownValue,
+    totalFloorArea: params.totalFloorArea || unknownValue,
+    aboveGroundFloors: params.aboveGroundFloors || unknownValue,
+    basementFloors: params.basementFloors || unknownValue,
+    buildingHeight: params.buildingHeight || unknownValue,
     publicPrivate: params.publicPrivate === "공공" ? "공공" : "민간",
-    constructionAction: params.constructionAction || "기타 / 잘 모르겠음",
+    constructionAction: params.constructionAction || "잘 모르겠음",
     heritageRelated: normalizeChoice(params.heritageRelated),
     riverRelated: normalizeChoice(params.riverRelated),
     schoolEnvironmentRelated: normalizeChoice(params.schoolEnvironmentRelated),
@@ -119,7 +130,7 @@ export function summarizeChecklist(cards: ChecklistCard[]): Record<ReviewCategor
     {
       "필수 검토": 0,
       "조건부 검토": 0,
-      "놓치기 쉬운 항목": 0,
+      "추가 확인": 0,
     } satisfies Record<ReviewCategory, number>,
   );
 }
