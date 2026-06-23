@@ -24,7 +24,8 @@ export default function PromptCopyCard({ promptText }: { promptText: string }) {
             AI에게 물어볼 프롬프트
           </h2>
           <p className="text-sm leading-6 text-slate-600">
-            입력한 프로젝트 정보를 포함해 바로 활용할 수 있는 초안 프롬프트입니다.
+            모든 프로젝트 정보와 생성된 체크리스트 항목명을 포함한 질문 유도용
+            프롬프트입니다.
           </p>
         </div>
         <button
@@ -47,7 +48,7 @@ export default function PromptCopyCard({ promptText }: { promptText: string }) {
         {copyState === "failed" &&
           "브라우저에서 클립보드 복사를 허용하지 않아 복사에 실패했습니다."}
         {copyState === "idle" &&
-          "복사 버튼을 누르면 이 프롬프트를 바로 붙여 넣을 수 있습니다."}
+          "복사 버튼을 누르면 AI에게 바로 붙여 넣을 수 있습니다."}
       </p>
     </section>
   );
