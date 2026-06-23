@@ -60,6 +60,15 @@ function buildPromptText(projectInfo: ProjectInfo, checklist: ChecklistCard[]) {
   ].join("\n");
 }
 
+const requiredFields: Array<keyof ProjectInfo> = [
+  "location",
+  "municipality",
+  "buildingUse",
+  "siteArea",
+  "totalFloorArea",
+  "constructionAction",
+];
+
 type ResultPageProps = {
   searchParams?: Promise<{
     location?: string;
@@ -87,6 +96,37 @@ type ResultPageProps = {
 export default async function ResultPage({ searchParams }: ResultPageProps) {
   const params = (await searchParams) ?? {};
   const projectInfo = parseProjectInfo(params);
+
+  const hasMissingBaseInfo = requiredFields.some(
+    (field) => projectInfo[field] === "미입력",
+  );
+
+  if (hasMissingBaseInfo) {
+    return (
+      <main className="min-h-screen bg-slate-100 px-6 py-12 text-slate-900">
+        <div className="mx-auto max-w-3xl">
+          <section className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-panel md:p-10">
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-brand-700">입력 확인 필요</p>
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+                입력 정보가 부족합니다
+              </h1>
+              <p className="text-base leading-7 text-slate-600">
+                입력 정보가 부족합니다. 기본 정보를 입력한 뒤 다시 시도해주세요.
+              </p>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
+              >
+                입력 화면으로 돌아가기
+              </Link>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const checklist = generateChecklist(projectInfo);
   const summary = summarizeChecklist(checklist);
   const promptText = buildPromptText(projectInfo, checklist);
@@ -189,8 +229,6 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
             ))}
           </div>
         </section>
-
-        <PromptCopySection promptText={promptText} />
       </div>
     </main>
   );

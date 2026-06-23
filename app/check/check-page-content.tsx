@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const constructionActions = [
@@ -107,6 +107,37 @@ const documentAnalysisPrompt = `첨부한 설계공모지침서, 과업이행서
 - 문서에서 확인되지 않은 정보:
 `;
 
+const fieldLabelMap = {
+  "대지 위치": "location",
+  "지역 / 지자체": "municipality",
+  "건축물 용도": "buildingUse",
+  "대지면적": "siteArea",
+  "연면적": "totalFloorArea",
+  "건축 행위": "constructionAction",
+  "용도지역": "zoningDistrict",
+  "용도지구": "useDistrict",
+  "용도구역": "useZone",
+  "지구단위계획구역 여부": "districtUnitPlan",
+  "지상층수": "aboveGroundFloors",
+  "지하층수": "basementFloors",
+  "높이": "buildingHeight",
+  "공공 / 민간": "publicPrivate",
+  "문화재 관련": "heritageRelated",
+  "하천 관련": "riverRelated",
+  "학교환경 관련": "schoolEnvironmentRelated",
+  "산지 관련": "mountainRelated",
+  "농지 관련": "farmlandRelated",
+} as const satisfies Record<string, keyof FormState>;
+
+const requiredFields: Array<keyof FormState> = [
+  "location",
+  "municipality",
+  "buildingUse",
+  "siteArea",
+  "totalFloorArea",
+  "constructionAction",
+];
+
 function SectionBadge({ label }: { label: "필수" | "선택" }) {
   return (
     <span
@@ -212,6 +243,87 @@ function AccordionSection({
   );
 }
 
+function normalizeChoice<T extends readonly string[]>(
+  value: string,
+  options: T,
+): T[number] | undefined {
+  return options.find((option) => option === value.trim());
+}
+
+function parseAiSummary(text: string, currentForm: FormState): FormState {
+  const nextForm = { ...currentForm };
+  const lines = text.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line.startsWith("-")) {
+      continue;
+    }
+
+    const withoutBullet = line.replace(/^-+\s*/, "");
+    const separatorIndex = withoutBullet.indexOf(":");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const label = withoutBullet.slice(0, separatorIndex).trim();
+    const value = withoutBullet.slice(separatorIndex + 1).trim();
+
+    if (!value || value === "확인 필요") {
+      continue;
+    }
+
+    const key = fieldLabelMap[label as keyof typeof fieldLabelMap];
+    if (!key) {
+      continue;
+    }
+
+    if (key === "districtUnitPlan") {
+      const normalized = normalizeChoice(value, yesNoUnknownOptions);
+      if (normalized) {
+        nextForm[key] = normalized;
+      }
+      continue;
+    }
+
+    if (
+      key === "heritageRelated" ||
+      key === "riverRelated" ||
+      key === "schoolEnvironmentRelated" ||
+      key === "mountainRelated" ||
+      key === "farmlandRelated"
+    ) {
+      const normalized = normalizeChoice(value, yesNoUnknownOptions);
+      if (normalized) {
+        nextForm[key] = normalized;
+      }
+      continue;
+    }
+
+    if (key === "publicPrivate") {
+      const normalized = normalizeChoice(value, publicPrivateOptions);
+      if (normalized) {
+        nextForm[key] = normalized;
+      }
+      continue;
+    }
+
+    if (key === "constructionAction") {
+      const normalized = constructionActions.find(
+        (option) => option.value === value,
+      )?.value;
+      if (normalized) {
+        nextForm[key] = normalized;
+      }
+      continue;
+    }
+
+    nextForm[key] = value;
+  }
+
+  return nextForm;
+}
+
 export default function CheckPageContent() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialForm);
@@ -220,14 +332,37 @@ export default function CheckPageContent() {
   );
   const [showPromptPreview, setShowPromptPreview] = useState(false);
   const [showPromptGuide, setShowPromptGuide] = useState(false);
+  const [pastedAiSummary, setPastedAiSummary] = useState("");
+  const [applyState, setApplyState] = useState<"idle" | "applied" | "empty">(
+    "idle",
+  );
+  const [validationMessage, setValidationMessage] = useState("");
   const [openSections, setOpenSections] = useState({
     siteDetails: false,
     buildingDetails: false,
     specialConditions: false,
   });
 
+  const missingRequiredFields = useMemo(
+    () =>
+      requiredFields.filter((field) => {
+        const value = form[field];
+        return typeof value === "string" ? value.trim() === "" : false;
+      }),
+    [form],
+  );
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (missingRequiredFields.length > 0) {
+      setValidationMessage(
+        "기본 정보를 먼저 입력해야 검토 항목을 정리할 수 있습니다.",
+      );
+      return;
+    }
+
+    setValidationMessage("");
 
     const params = new URLSearchParams({
       location: form.location,
@@ -263,6 +398,17 @@ export default function CheckPageContent() {
     }
   };
 
+  const handleApplyAiSummary = () => {
+    if (!pastedAiSummary.trim()) {
+      setApplyState("empty");
+      return;
+    }
+
+    setForm((current) => parseAiSummary(pastedAiSummary, current));
+    setApplyState("applied");
+    setValidationMessage("");
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 px-6 py-12 text-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -277,105 +423,119 @@ export default function CheckPageContent() {
             </p>
           </div>
 
-          <div className="mt-8 grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
-              <div className="space-y-3">
-                <h2 className="text-xl font-bold text-slate-900">
-                  직접 입력해서 검토하기
-                </h2>
-                <p className="text-sm leading-6 text-slate-600">
-                  대지 위치, 용도, 면적, 건축 행위를 직접 입력해 검토 항목을
-                  정리합니다.
-                </p>
-              </div>
-            </section>
+          <section className="mt-8 rounded-[24px] border border-brand-100 bg-brand-50 p-6">
+            <div className="space-y-3">
+              <h2 className="text-xl font-bold text-slate-900">
+                지침서에서 정보 뽑아오기
+              </h2>
+              <p className="text-sm leading-6 text-slate-600">
+                설계공모지침서나 과업이행서가 있다면 GPT 또는 Gemini에 문서를
+                첨부한 뒤, 아래 프롬프트를 사용해 필요한 정보를 먼저 정리할 수
+                있습니다.
+              </p>
+            </div>
 
-            <section className="rounded-[24px] border border-brand-100 bg-brand-50 p-6">
-              <div className="space-y-3">
-                <h2 className="text-xl font-bold text-slate-900">
-                  지침서에서 정보 뽑아오기
-                </h2>
-                <p className="text-sm leading-6 text-slate-600">
-                  설계공모지침서나 과업이행서를 GPT 또는 Gemini에 첨부한 뒤,
-                  아래 프롬프트를 복사해 필요한 정보를 정리할 수 있습니다.
-                </p>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopyPrompt}
-                  className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
-                >
-                  프롬프트 복사
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPromptGuide((current) => !current)}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
-                >
-                  사용 방법 보기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPromptPreview((current) => !current)}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
-                >
-                  프롬프트 미리보기
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-slate-500">
-                  {copyState === "copied" &&
-                    "프롬프트를 클립보드에 복사했습니다."}
-                  {copyState === "failed" &&
-                    "브라우저에서 클립보드 복사를 허용하지 않아 복사에 실패했습니다."}
-                  {copyState === "idle" &&
-                    "문서를 첨부한 뒤 이 프롬프트를 붙여 넣으면 필요한 정보를 먼저 정리받을 수 있습니다."}
-                </p>
-                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                  AI가 정리한 내용은 법적 확정 판단이 아니며, 지침서 원문과 공식
-                  법령을 반드시 다시 확인해야 합니다.
-                </p>
-              </div>
-
-              {showPromptGuide ? (
-                <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
-                  <h3 className="text-sm font-bold text-slate-900">사용 방법</h3>
-                  <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                    <p>1. 설계공모지침서나 과업이행서를 GPT 또는 Gemini에 첨부합니다.</p>
-                    <p>2. 여기서 프롬프트를 복사해 대화창에 붙여 넣습니다.</p>
-                    <p>3. AI가 정리한 내용을 보면서 아래 입력칸에 필요한 값만 옮겨 적습니다.</p>
-                  </div>
-                </div>
-              ) : null}
-
-              {showPromptPreview ? (
-                <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
-                  <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800">
-                    {documentAnalysisPrompt}
-                  </pre>
-                </div>
-              ) : null}
-            </section>
-          </div>
-
-          <form className="mt-8 grid gap-6" onSubmit={handleSubmit}>
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-brand-700">입력 시작</p>
-                <p className="text-sm leading-6 text-slate-600">
-                  먼저 기본 정보만 입력해도 검토 항목을 정리할 수 있습니다.
-                </p>
-              </div>
+            <div className="mt-5 flex flex-wrap gap-3">
               <button
-                type="submit"
+                type="button"
+                onClick={handleCopyPrompt}
                 className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
               >
-                법규 검토 항목 확인하기
+                프롬프트 복사
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPromptGuide((current) => !current)}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
+              >
+                사용 방법 보기
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPromptPreview((current) => !current)}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
+              >
+                프롬프트 미리보기
               </button>
             </div>
+
+            <div className="mt-4 space-y-2">
+              <p className="text-sm text-slate-500">
+                {copyState === "copied" &&
+                  "프롬프트를 클립보드에 복사했습니다."}
+                {copyState === "failed" &&
+                  "브라우저에서 클립보드 복사를 허용하지 않아 복사에 실패했습니다."}
+                {copyState === "idle" &&
+                  "문서를 첨부한 뒤 이 프롬프트를 붙여 넣으면 필요한 정보를 먼저 정리받을 수 있습니다."}
+              </p>
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                AI가 정리한 내용은 법적 확정 판단이 아니며, 지침서 원문과 공식
+                법령을 반드시 다시 확인해야 합니다.
+              </p>
+            </div>
+
+            {showPromptGuide ? (
+              <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
+                <h3 className="text-sm font-bold text-slate-900">사용 방법</h3>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                  <p>1. 설계공모지침서나 과업이행서를 GPT 또는 Gemini에 첨부합니다.</p>
+                  <p>2. 여기서 프롬프트를 복사해 대화창에 붙여 넣습니다.</p>
+                  <p>3. AI가 정리한 내용을 아래 붙여넣기 칸에 넣고 입력폼에 반영합니다.</p>
+                </div>
+              </div>
+            ) : null}
+
+            {showPromptPreview ? (
+              <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
+                <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800">
+                  {documentAnalysisPrompt}
+                </pre>
+              </div>
+            ) : null}
+
+            <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  AI 정리 결과 붙여넣기
+                </h3>
+                <p className="text-sm leading-6 text-slate-600">
+                  GPT/Gemini가 정리해준 내용을 여기에 붙여넣은 뒤, 입력폼에
+                  채워 넣을 수 있습니다.
+                </p>
+              </div>
+              <textarea
+                value={pastedAiSummary}
+                onChange={(event) => {
+                  setPastedAiSummary(event.target.value);
+                  setApplyState("idle");
+                }}
+                placeholder="GPT/Gemini가 정리해준 내용을 여기에 붙여넣으세요."
+                className="input-field mt-4 min-h-40 resize-y"
+              />
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleApplyAiSummary}
+                  className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
+                >
+                  입력폼에 반영하기
+                </button>
+                <p className="text-sm text-slate-500">
+                  {applyState === "applied" &&
+                    "붙여넣은 내용에서 찾을 수 있는 항목을 입력폼에 반영했습니다."}
+                  {applyState === "empty" &&
+                    "먼저 AI가 정리한 내용을 붙여넣어 주세요."}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <form className="mt-8 grid gap-6" onSubmit={handleSubmit}>
+            {validationMessage ? (
+              <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-900">
+                {validationMessage}
+              </div>
+            ) : null}
 
             <section className="space-y-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
               <div className="space-y-2">
@@ -395,12 +555,13 @@ export default function CheckPageContent() {
                   <input
                     type="text"
                     value={form.location}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         location: event.target.value,
-                      }))
-                    }
+                      }));
+                      setValidationMessage("");
+                    }}
                     placeholder="예: 서울특별시 종로구 청운동"
                     className="input-field"
                   />
@@ -413,12 +574,13 @@ export default function CheckPageContent() {
                   <input
                     type="text"
                     value={form.municipality}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         municipality: event.target.value,
-                      }))
-                    }
+                      }));
+                      setValidationMessage("");
+                    }}
                     placeholder="예: 서울특별시 종로구"
                     className="input-field"
                   />
@@ -431,12 +593,13 @@ export default function CheckPageContent() {
                   <input
                     type="text"
                     value={form.buildingUse}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         buildingUse: event.target.value,
-                      }))
-                    }
+                      }));
+                      setValidationMessage("");
+                    }}
                     placeholder="예: 제2종 근린생활시설"
                     className="input-field"
                   />
@@ -449,12 +612,13 @@ export default function CheckPageContent() {
                     min="0"
                     step="0.01"
                     value={form.siteArea}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         siteArea: event.target.value,
-                      }))
-                    }
+                      }));
+                      setValidationMessage("");
+                    }}
                     placeholder="예: 1234.56"
                     className="input-field"
                   />
@@ -467,12 +631,13 @@ export default function CheckPageContent() {
                     min="0"
                     step="0.01"
                     value={form.totalFloorArea}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         totalFloorArea: event.target.value,
-                      }))
-                    }
+                      }));
+                      setValidationMessage("");
+                    }}
                     placeholder="예: 1234.56"
                     className="input-field"
                   />
@@ -500,12 +665,13 @@ export default function CheckPageContent() {
                           value={option.value}
                           className="h-4 w-4 border-slate-300 text-brand-700 focus:ring-brand-500"
                           checked={form.constructionAction === option.value}
-                          onChange={() =>
+                          onChange={() => {
                             setForm((current) => ({
                               ...current,
                               constructionAction: option.value,
-                            }))
-                          }
+                            }));
+                            setValidationMessage("");
+                          }}
                         />
                         <span className="text-sm font-semibold text-slate-900">
                           {option.value}
@@ -765,7 +931,7 @@ export default function CheckPageContent() {
                 type="submit"
                 className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
               >
-                법규 검토 항목 확인하기
+                검토 항목 정리하기
               </button>
             </div>
           </form>
