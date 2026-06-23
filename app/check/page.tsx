@@ -62,6 +62,48 @@ const initialForm: FormState = {
   farmlandRelated: "모름",
 };
 
+const documentAnalysisPrompt = `첨부한 설계공모지침서, 과업이행서, 설계지침서 PDF 또는 HWP 문서를 읽고 아래 작업을 수행해줘.
+
+목적:
+- 첨부 문서에서 프로젝트 기본 정보 추출
+- 대지 정보 추출
+- 건축물 정보 추출
+- 특수 조건 추출
+- 법규 검토에 영향을 줄 수 있는 문장 추출
+- 확인되지 않는 정보는 "확인 필요"로 표시
+- 법적 확정 판단은 하지 않음
+- 결과를 JSON 형식으로 출력
+
+출력 규칙:
+- 추정하지 말고 문서에 근거가 있는 내용만 작성해줘.
+- 값이 여러 군데 다르면 충돌 가능성을 메모하고 missingInformation에도 추가해줘.
+- 법령 해석이나 적법 여부 판단은 하지 말고, 문서에 적힌 사실만 구조화해줘.
+- specialConditions는 문자열 배열로 작성해줘.
+- extractedChecklistHints는 법규 검토에 영향을 줄 수 있는 문장이나 키워드를 문자열 배열로 정리해줘.
+- missingInformation은 문서에서 찾지 못한 항목명을 문자열 배열로 정리해줘.
+
+아래 JSON 형식으로만 답변해줘:
+{
+  "projectName": "",
+  "siteLocation": "",
+  "localGovernment": "",
+  "buildingUse": "",
+  "siteArea": "",
+  "totalFloorArea": "",
+  "buildingAction": "",
+  "zoningArea": "",
+  "zoningDistrict": "",
+  "zoningZone": "",
+  "districtUnitPlan": "",
+  "publicOrPrivate": "",
+  "groundFloors": "",
+  "basementFloors": "",
+  "height": "",
+  "specialConditions": [],
+  "extractedChecklistHints": [],
+  "missingInformation": []
+}`;
+
 function ChoiceGroup<T extends string>({
   legend,
   name,
@@ -82,7 +124,9 @@ function ChoiceGroup<T extends string>({
   return (
     <fieldset className="space-y-3">
       <legend className="text-sm font-semibold text-slate-700">{legend}</legend>
-      {helperText ? <p className="text-xs leading-5 text-slate-500">{helperText}</p> : null}
+      {helperText ? (
+        <p className="text-xs leading-5 text-slate-500">{helperText}</p>
+      ) : null}
       <div className={`grid gap-3 ${columns}`}>
         {options.map((option) => (
           <label
@@ -158,7 +202,9 @@ function AccordionSection({
         </span>
       </button>
 
-      {isOpen ? <div className="border-t border-slate-200 px-6 py-6">{children}</div> : null}
+      {isOpen ? (
+        <div className="border-t border-slate-200 px-6 py-6">{children}</div>
+      ) : null}
     </section>
   );
 }
@@ -166,6 +212,9 @@ function AccordionSection({
 export default function CheckPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialForm);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
+    "idle",
+  );
   const [openSections, setOpenSections] = useState({
     siteDetails: false,
     buildingDetails: false,
@@ -198,6 +247,15 @@ export default function CheckPage() {
     });
 
     router.push(`/result?${params.toString()}`);
+  };
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(documentAnalysisPrompt);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
   };
 
   return (
@@ -596,6 +654,52 @@ export default function CheckPage() {
                 />
               </div>
             </AccordionSection>
+
+            <section className="rounded-[24px] border border-slate-200 bg-brand-50/60 p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-bold text-slate-900">
+                      문서 분석 프롬프트 생성기
+                    </h2>
+                    <SectionBadge label="선택" />
+                  </div>
+                  <p className="text-sm leading-6 text-slate-600">
+                    설계공모지침서나 과업이행서가 있다면 아래 프롬프트를 복사해
+                    GPT 또는 Gemini에 붙여넣으세요. AI가 문서에서 체크리스트
+                    입력에 필요한 정보를 정리해줍니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
+                >
+                  프롬프트 복사
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-5">
+                <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800">
+                  {documentAnalysisPrompt}
+                </pre>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-slate-500">
+                  {copyState === "copied" &&
+                    "프롬프트를 클립보드에 복사했습니다."}
+                  {copyState === "failed" &&
+                    "브라우저에서 클립보드 복사를 허용하지 않아 복사에 실패했습니다."}
+                  {copyState === "idle" &&
+                    "복사 버튼을 누르면 외부 AI에 바로 붙여 넣을 수 있습니다."}
+                </p>
+                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  AI가 추출한 내용은 법적 확정 판단이 아니며, 지침서 원문과 공식
+                  법령을 반드시 재확인해야 합니다.
+                </p>
+              </div>
+            </section>
 
             <div>
               <button
