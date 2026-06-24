@@ -4,16 +4,159 @@
 
 :root {
   color-scheme: light;
+  --bg: #efede8;
+  --bg-soft: #f6f4ef;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-strong: #ffffff;
+  --text: #1a2025;
+  --muted: #67717c;
+  --line: rgba(26, 32, 37, 0.11);
+  --brand: #24384d;
+  --brand-soft: #e6edf4;
+  --accent: #7b94a8;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  background: #f1f5f9;
-  color: #0f172a;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)),
+    linear-gradient(90deg, rgba(26, 32, 37, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(26, 32, 37, 0.035) 1px, transparent 1px),
+    var(--bg);
+  background-size: auto, 32px 32px, 32px 32px, auto;
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+}
+
+::selection {
+  background: rgba(36, 56, 77, 0.16);
 }
 
 @layer components {
+  .font-editorial {
+    font-family: var(--font-editorial), serif;
+  }
+
+  .surface-card {
+    @apply border bg-white/90 shadow-panel backdrop-blur-sm;
+    border-color: var(--line);
+  }
+
+  .section-frame {
+    @apply border bg-white/70 backdrop-blur-sm;
+    border-color: var(--line);
+  }
+
+  .section-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.24em];
+    color: var(--accent);
+  }
+
+  .section-title {
+    @apply flex items-center gap-4 text-[26px] font-semibold tracking-[-0.03em] text-slate-900;
+  }
+
+  .section-title::before {
+    content: "";
+    @apply block h-px w-10 bg-slate-400;
+  }
+
+  .label-text {
+    @apply text-sm font-semibold tracking-[-0.01em] text-slate-800;
+  }
+
+  .helper-text {
+    color: var(--muted);
+    @apply text-xs leading-5;
+  }
+
   .input-field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100;
+    @apply w-full rounded-none border px-4 py-3.5 text-[15px] text-slate-900 outline-none transition placeholder:text-slate-400;
+    border-color: rgba(26, 32, 37, 0.14);
+    background: rgba(250, 249, 246, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+
+  .input-field:hover {
+    border-color: rgba(36, 56, 77, 0.28);
+  }
+
+  .input-field:focus {
+    border-color: rgba(36, 56, 77, 0.9);
+    background: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 0 0 4px rgba(36, 56, 77, 0.08);
+  }
+
+  .input-area {
+    @apply min-h-40 resize-y;
+  }
+
+  .solid-button {
+    @apply inline-flex items-center justify-center border px-5 py-3 text-sm font-semibold transition;
+    border-color: var(--brand);
+    background: var(--brand);
+    color: white;
+  }
+
+  .solid-button:hover {
+    background: #192a3a;
+    border-color: #192a3a;
+  }
+
+  .ghost-button {
+    @apply inline-flex items-center justify-center border px-5 py-3 text-sm font-semibold transition;
+    border-color: rgba(26, 32, 37, 0.16);
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--text);
+  }
+
+  .ghost-button:hover {
+    border-color: rgba(36, 56, 77, 0.45);
+    color: var(--brand);
+  }
+
+  .status-badge {
+    @apply inline-flex items-center border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em];
+    border-color: rgba(26, 32, 37, 0.12);
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .required-badge {
+    @apply status-badge;
+    border-color: rgba(36, 56, 77, 0.16);
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+
+  .optional-badge {
+    @apply status-badge;
+  }
+
+  .hairline-grid {
+    background-image:
+      linear-gradient(90deg, rgba(26, 32, 37, 0.04) 1px, transparent 1px),
+      linear-gradient(rgba(26, 32, 37, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .eyebrow-number {
+    @apply text-xs font-semibold tracking-[0.22em] text-slate-500;
+  }
+
+  .muted-divider {
+    border-color: var(--line);
+  }
+
+  .architectural-note {
+    @apply border-l pl-4 text-sm leading-6;
+    border-color: rgba(36, 56, 77, 0.25);
+    color: var(--muted);
   }
 }

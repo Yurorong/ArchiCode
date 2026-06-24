@@ -17,10 +17,67 @@ function ProjectInfoRow({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <dt className="font-semibold text-slate-500">{label}</dt>
-      <dd className="mt-1 text-slate-900">{value}</dd>
+    <div className="section-frame px-4 py-4">
+      <dt className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</dt>
+      <dd className="mt-2 text-base font-medium text-slate-900">{value}</dd>
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "brand" | "neutral" | "olive";
+}) {
+  const toneClass =
+    tone === "brand"
+      ? "bg-brand-50/80"
+      : tone === "olive"
+        ? "bg-[#eff3ea]"
+        : "bg-white/80";
+
+  return (
+    <div className={`surface-card p-5 ${toneClass}`}>
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function CategorySection({
+  title,
+  description,
+  count,
+  items,
+}: {
+  title: string;
+  description: string;
+  count: number;
+  items: ChecklistCard[];
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="grid gap-5">
+      <div className="flex flex-col gap-3 border-b muted-divider pb-4 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-2">
+          <h2 className="section-title">{title}</h2>
+          <p className="text-sm leading-7 text-slate-600">{description}</p>
+        </div>
+        <p className="text-sm font-medium text-slate-500">{count}개 항목</p>
+      </div>
+      <div className="grid gap-5">
+        {items.map((item) => (
+          <ChecklistDetailCard key={item.id} item={item} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -91,22 +148,19 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
     projectInfo.buildingUse === "확인 필요"
   ) {
     return (
-      <main className="min-h-screen bg-slate-100 px-6 py-12 text-slate-900">
-        <div className="mx-auto max-w-3xl">
-          <section className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-panel md:p-10">
-            <div className="space-y-4">
-              <p className="text-sm font-semibold text-brand-700">입력 안내</p>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+      <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
+        <div className="mx-auto max-w-4xl">
+          <section className="surface-card p-8 md:p-10">
+            <div className="space-y-5">
+              <p className="section-kicker">Input Required</p>
+              <h1 className="font-editorial text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
                 입력 정보가 더 필요합니다
               </h1>
-              <p className="text-base leading-7 text-slate-600">
-                어디에 있는 땅인지와 어떤 건물인지 정도를 입력한 뒤 다시
-                시도해 주세요.
+              <p className="max-w-2xl text-base leading-8 text-slate-600">
+                어디에 있는 대지인지와 어떤 건물인지 정도를 입력한 뒤 다시 시도해
+                주세요.
               </p>
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-900"
-              >
+              <Link href="/" className="solid-button">
                 입력 화면으로 돌아가기
               </Link>
             </div>
@@ -120,98 +174,104 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
   const summary = summarizeChecklist(checklist);
   const promptText = buildPromptText(projectInfo, checklist);
 
+  const requiredItems = checklist.filter((item) => item.category === "필수 검토");
+  const conditionalItems = checklist.filter((item) => item.category === "조건부 검토");
+  const additionalItems = checklist.filter((item) => item.category === "추가 확인");
+
   return (
-    <main className="min-h-screen bg-slate-100 px-6 py-12 text-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <section className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-panel md:p-10">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-4">
-              <p className="text-sm font-semibold text-brand-700">검토 결과</p>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                먼저 확인해야 할 항목
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-600">
-                아래 항목은 법적 확정 판단이 아니라, 초기 검토 단계에서 먼저
-                확인해 보면 좋은 내용입니다.
-              </p>
+    <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
+        <section className="surface-card overflow-hidden p-6 md:p-8">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_360px]">
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <p className="section-kicker">Review Output</p>
+                <h1 className="font-editorial text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+                  프로젝트 검토 결과
+                </h1>
+                <p className="max-w-3xl text-base leading-8 text-slate-600">
+                  아래 결과는 법적 확정 판단이 아니라, 초기 설계 단계에서 먼저
+                  살펴보면 좋은 검토 순서를 정리한 것입니다.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <ProjectInfoRow label="대지 위치" value={projectInfo.location} />
+                <ProjectInfoRow label="지역 / 지자체" value={projectInfo.municipality} />
+                <ProjectInfoRow label="건축물 용도" value={projectInfo.buildingUse} />
+                <ProjectInfoRow label="건축 행위" value={projectInfo.constructionAction} />
+                <ProjectInfoRow label="대지면적" value={formatWithUnit(projectInfo.siteArea, "㎡")} />
+                <ProjectInfoRow
+                  label="연면적"
+                  value={formatWithUnit(projectInfo.totalFloorArea, "㎡")}
+                />
+                <ProjectInfoRow
+                  label="지상 / 지하"
+                  value={`${formatWithUnit(projectInfo.aboveGroundFloors, "층")} / ${formatWithUnit(projectInfo.basementFloors, "층")}`}
+                />
+                <ProjectInfoRow
+                  label="높이"
+                  value={formatWithUnit(projectInfo.buildingHeight, "m")}
+                />
+                <ProjectInfoRow label="공공 / 민간" value={projectInfo.publicPrivate} />
+              </div>
+            </div>
+
+            <aside className="hairline-grid section-frame flex flex-col justify-between gap-6 p-5">
+              <div className="space-y-3">
+                <p className="eyebrow-number">Summary</p>
+                <h2 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                  검토 결과 요약
+                </h2>
+                <p className="text-sm leading-7 text-slate-600">
+                  필수 검토와 놓치기 쉬운 조건을 먼저 나누어 보고, 이후 세부 카드에서
+                  법령과 확인 포인트를 펼쳐 확인할 수 있습니다.
+                </p>
+              </div>
+              <div className="grid gap-4">
+                <SummaryStat label="필수 검토" value={summary["필수 검토"]} tone="brand" />
+                <SummaryStat
+                  label="놓치기 쉬운 항목"
+                  value={summary["조건부 검토"]}
+                  tone="neutral"
+                />
+                <SummaryStat
+                  label="추가 확인 항목"
+                  value={summary["추가 확인"]}
+                  tone="olive"
+                />
+              </div>
               <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/"
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-700"
-                >
+                <Link href="/" className="ghost-button">
                   입력 화면으로 돌아가기
                 </Link>
               </div>
-            </div>
-
-            <div className="grid min-w-[280px] gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-sm font-semibold text-slate-500">필수 검토</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {summary["필수 검토"]}개
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-sm font-semibold text-slate-500">조건부 검토</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {summary["조건부 검토"]}개
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-sm font-semibold text-slate-500">추가 확인</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {summary["추가 확인"]}개
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-lg font-bold text-slate-900">입력한 정보</h2>
-            <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-              <ProjectInfoRow label="땅 위치" value={projectInfo.location} />
-              <ProjectInfoRow
-                label="지자체"
-                value={projectInfo.municipality}
-              />
-              <ProjectInfoRow
-                label="건물 종류"
-                value={projectInfo.buildingUse}
-              />
-              <ProjectInfoRow
-                label="하려는 일"
-                value={projectInfo.constructionAction}
-              />
-              <ProjectInfoRow
-                label="땅 면적"
-                value={formatWithUnit(projectInfo.siteArea, "㎡")}
-              />
-              <ProjectInfoRow
-                label="건물 전체 면적"
-                value={formatWithUnit(projectInfo.totalFloorArea, "㎡")}
-              />
-            </dl>
+            </aside>
           </div>
         </section>
 
         <PromptCopySection compact promptText={promptText} />
 
-        <section className="space-y-4">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900">
-              검토 항목 안내
-            </h2>
-            <p className="text-sm leading-6 text-slate-600">
-              먼저 쉬운 설명과 확인할 것부터 보고, 필요할 때만 관련 법령 보기를
-              눌러 자세한 내용을 확인해 보세요.
-            </p>
-          </div>
-          <div className="grid gap-6">
-            {checklist.map((item) => (
-              <ChecklistDetailCard key={item.id} item={item} />
-            ))}
-          </div>
-        </section>
+        <CategorySection
+          title="필수 검토"
+          description="허가 가능성, 규모 계획, 안전 기준처럼 초기에 먼저 방향을 잡아야 하는 항목입니다."
+          count={requiredItems.length}
+          items={requiredItems}
+        />
+
+        <CategorySection
+          title="놓치기 쉬운 항목"
+          description="조건에 따라 적용되며, 초기에 놓치면 평면이나 절차를 다시 조정하게 만들 수 있는 항목입니다."
+          count={conditionalItems.length}
+          items={conditionalItems}
+        />
+
+        <CategorySection
+          title="추가 확인 항목"
+          description="법규 검토를 더 정밀하게 만들기 위해 함께 확인하면 좋은 보완 검토입니다."
+          count={additionalItems.length}
+          items={additionalItems}
+        />
       </div>
     </main>
   );
