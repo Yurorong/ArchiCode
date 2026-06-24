@@ -16,6 +16,9 @@ type LawSearchItem = {
 };
 
 type DebugInfo = {
+  hasOc: boolean;
+  ocLength: number;
+  ocPreview: string;
   upstreamUrlWithoutOC: string;
   upstreamStatus: number | null;
   upstreamContentType: string;
@@ -24,6 +27,16 @@ type DebugInfo = {
   detectedResultPath: string;
   itemCountBeforeNormalize: number;
   itemCountAfterNormalize: number;
+  requestCheck: {
+    hasOC: boolean;
+    hasTarget: boolean;
+    target: string;
+    hasType: boolean;
+    type: string;
+    hasQuery: boolean;
+    query: string;
+    display: string;
+  };
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -191,10 +204,27 @@ function extractItems(payload: unknown) {
 }
 
 function buildMaskedUpstreamUrl(keyword: string) {
-  return (
-    `${LAW_SEARCH_URL}?OC=***` +
-    `&target=law&type=JSON&query=${encodeURIComponent(keyword)}&display=${DISPLAY_LIMIT}`
-  );
+  const params = new URLSearchParams({
+    OC: "***",
+    target: "law",
+    type: "JSON",
+    query: keyword,
+    display: String(DISPLAY_LIMIT),
+  });
+
+  return `${LAW_SEARCH_URL}?${params.toString()}`;
+}
+
+function buildOcPreview(oc: string) {
+  if (!oc) {
+    return "";
+  }
+
+  if (oc.length <= 4) {
+    return `${oc.slice(0, 1)}***${oc.slice(-1)}`;
+  }
+
+  return `${oc.slice(0, 2)}***${oc.slice(-2)}`;
 }
 
 function withDebug(
@@ -217,7 +247,20 @@ export async function GET(request: Request) {
   const keyword = searchParams.get("keyword")?.trim() ?? "";
   const debug = searchParams.get("debug") === "1";
   const upstreamUrlWithoutOC = buildMaskedUpstreamUrl(keyword);
+  const emptyRequestCheck = {
+    hasOC: false,
+    hasTarget: true,
+    target: "law",
+    hasType: true,
+    type: "JSON",
+    hasQuery: Boolean(keyword),
+    query: keyword,
+    display: String(DISPLAY_LIMIT),
+  };
   const baseDebugInfo: DebugInfo = {
+    hasOc: false,
+    ocLength: 0,
+    ocPreview: "",
     upstreamUrlWithoutOC,
     upstreamStatus: null,
     upstreamContentType: "",
@@ -226,6 +269,7 @@ export async function GET(request: Request) {
     detectedResultPath: "not-requested",
     itemCountBeforeNormalize: 0,
     itemCountAfterNormalize: 0,
+    requestCheck: emptyRequestCheck,
   };
 
   if (!keyword) {
@@ -242,28 +286,46 @@ export async function GET(request: Request) {
     );
   }
 
-  const oc = process.env.LAW_OPEN_API_OC;
+  const oc = process.env.LAW_OPEN_API_OC?.trim();
+  const debugInfoWithOc: DebugInfo = {
+    ...baseDebugInfo,
+    hasOc: Boolean(oc),
+    ocLength: oc?.length ?? 0,
+    ocPreview: oc ? buildOcPreview(oc) : "",
+    requestCheck: {
+      hasOC: Boolean(oc),
+      hasTarget: true,
+      target: "law",
+      hasType: true,
+      type: "JSON",
+      hasQuery: Boolean(keyword),
+      query: keyword,
+      display: String(DISPLAY_LIMIT),
+    },
+  };
 
   if (!oc) {
     return NextResponse.json(
       withDebug(
         {
           ok: false,
-          keyword,
-          items: [],
           error: "LAW_OPEN_API_OC 환경변수가 설정되지 않았습니다.",
-          reason: "missing-env",
         },
         debug,
-        baseDebugInfo,
+        debugInfoWithOc,
       ),
       { status: 500 },
     );
   }
 
-  const requestUrl =
-    `${LAW_SEARCH_URL}?OC=${encodeURIComponent(oc)}` +
-    `&target=law&type=JSON&query=${encodeURIComponent(keyword)}&display=${DISPLAY_LIMIT}`;
+  const params = new URLSearchParams({
+    OC: oc,
+    target: "law",
+    type: "JSON",
+    query: keyword,
+    display: String(DISPLAY_LIMIT),
+  });
+  const requestUrl = `${LAW_SEARCH_URL}?${params.toString()}`;
 
   try {
     const response = await fetch(requestUrl, {
@@ -290,7 +352,7 @@ export async function GET(request: Request) {
           },
           debug,
           {
-            ...baseDebugInfo,
+            ...debugInfoWithOc,
             upstreamStatus,
             upstreamContentType,
             rawTextPreview,
@@ -312,7 +374,7 @@ export async function GET(request: Request) {
           },
           debug,
           {
-            ...baseDebugInfo,
+            ...debugInfoWithOc,
             upstreamStatus,
             upstreamContentType,
             rawTextPreview,
@@ -334,7 +396,7 @@ export async function GET(request: Request) {
           },
           debug,
           {
-            ...baseDebugInfo,
+            ...debugInfoWithOc,
             upstreamStatus,
             upstreamContentType,
             rawTextPreview,
@@ -362,7 +424,7 @@ export async function GET(request: Request) {
           },
           debug,
           {
-            ...baseDebugInfo,
+            ...debugInfoWithOc,
             upstreamStatus,
             upstreamContentType,
             rawTextPreview,
@@ -399,7 +461,7 @@ export async function GET(request: Request) {
           },
           debug,
           {
-            ...baseDebugInfo,
+            ...debugInfoWithOc,
             upstreamStatus,
             upstreamContentType,
             rawTextPreview,
@@ -421,7 +483,7 @@ export async function GET(request: Request) {
         },
         debug,
         {
-          ...baseDebugInfo,
+          ...debugInfoWithOc,
           upstreamStatus,
           upstreamContentType,
           rawTextPreview,
@@ -445,7 +507,7 @@ export async function GET(request: Request) {
           reason: "request-failed",
         },
         debug,
-        baseDebugInfo,
+        debugInfoWithOc,
       ),
       { status: 502 },
     );
