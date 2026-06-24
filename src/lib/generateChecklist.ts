@@ -1,11 +1,11 @@
 import {
-  checklistTemplates,
+  checklistIssueTemplates,
   type BuildingUseGroup,
-  type ChecklistCard,
-  type ChecklistCardConditions,
-  type ChecklistCardTemplate,
+  type ChecklistIssue,
+  type ChecklistIssueTemplate,
+  type ChecklistPriority,
   type PublicPrivate,
-  type ReviewCategory,
+  type TriggerConditions,
   type YesNoUnknown,
 } from "./checklistCards";
 
@@ -102,11 +102,19 @@ function parseNumber(value: string) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function containsAnyKeyword(value: string, keywords: readonly string[] | undefined) {
+  if (!keywords || keywords.length === 0) {
+    return true;
+  }
+
+  return keywords.some((keyword) => value.includes(keyword));
+}
+
 export function classifyBuildingUse(buildingUse: string): BuildingUseGroup {
   const normalized = buildingUse.replace(/\s/g, "").toLowerCase();
 
   if (
-    ["문화", "집회", "공연", "전시", "박물관", "미술관", "문예"].some((keyword) =>
+    ["문화", "집회", "공연", "전시", "박물관", "미술관", "도서관", "문예"].some((keyword) =>
       normalized.includes(keyword),
     )
   ) {
@@ -121,7 +129,11 @@ export function classifyBuildingUse(buildingUse: string): BuildingUseGroup {
     return "근린생활시설";
   }
 
-  if (["주택", "공동주택", "다가구", "다세대", "오피스텔"].some((keyword) => normalized.includes(keyword))) {
+  if (
+    ["주택", "공동주택", "다가구", "다세대", "오피스텔", "기숙사"].some((keyword) =>
+      normalized.includes(keyword),
+    )
+  ) {
     return "주택";
   }
 
@@ -157,54 +169,101 @@ function isLargeScaleProject(projectInfo: ProjectInfo) {
   );
 }
 
+function getSearchContext(projectInfo: ProjectInfo) {
+  return {
+    location: projectInfo.location.replace(/\s/g, ""),
+    municipality: projectInfo.municipality.replace(/\s/g, ""),
+    zoningDistrict: projectInfo.zoningDistrict.replace(/\s/g, ""),
+    useDistrict: projectInfo.useDistrict.replace(/\s/g, ""),
+    useZone: projectInfo.useZone.replace(/\s/g, ""),
+    buildingUse: projectInfo.buildingUse.replace(/\s/g, ""),
+  };
+}
+
+function matchesKeywordConditions(
+  conditions: TriggerConditions,
+  projectInfo: ProjectInfo,
+) {
+  const context = getSearchContext(projectInfo);
+
+  const locationMatch = containsAnyKeyword(context.location, conditions.locationKeywords);
+  const municipalityMatch = containsAnyKeyword(
+    context.municipality,
+    conditions.municipalityKeywords,
+  );
+  const zoningMatch = containsAnyKeyword(context.zoningDistrict, conditions.zoningKeywords);
+  const useDistrictMatch = containsAnyKeyword(
+    context.useDistrict,
+    conditions.useDistrictKeywords,
+  );
+  const useZoneMatch = containsAnyKeyword(context.useZone, conditions.useZoneKeywords);
+  const buildingUseMatch = containsAnyKeyword(context.buildingUse, conditions.buildingUseKeywords);
+
+  const hasLocationKeywords = !!conditions.locationKeywords?.length;
+  const hasMunicipalityKeywords = !!conditions.municipalityKeywords?.length;
+  const hasZoningKeywords = !!conditions.zoningKeywords?.length;
+  const hasUseDistrictKeywords = !!conditions.useDistrictKeywords?.length;
+  const hasUseZoneKeywords = !!conditions.useZoneKeywords?.length;
+  const hasBuildingUseKeywords = !!conditions.buildingUseKeywords?.length;
+
+  return (
+    (!hasLocationKeywords || locationMatch) &&
+    (!hasMunicipalityKeywords || municipalityMatch) &&
+    (!hasZoningKeywords || zoningMatch) &&
+    (!hasUseDistrictKeywords || useDistrictMatch) &&
+    (!hasUseZoneKeywords || useZoneMatch) &&
+    (!hasBuildingUseKeywords || buildingUseMatch)
+  );
+}
+
 function matchesConditions(
-  template: ChecklistCardTemplate,
+  template: ChecklistIssueTemplate,
   projectInfo: ProjectInfo,
   buildingUseGroup: BuildingUseGroup,
 ): boolean {
-  const { conditions } = template;
+  const { triggerConditions } = template;
 
-  if (conditions.always) {
+  if (triggerConditions.always) {
     return true;
   }
 
   return (
-    includesValue(conditions.constructionActions, projectInfo.constructionAction) &&
-    includesValue(conditions.buildingUseGroups, buildingUseGroup) &&
-    includesValue(conditions.districtUnitPlan, projectInfo.districtUnitPlan) &&
-    includesValue(conditions.publicPrivate, projectInfo.publicPrivate) &&
-    includesValue(conditions.heritageRelated, projectInfo.heritageRelated) &&
-    includesValue(conditions.riverRelated, projectInfo.riverRelated) &&
-    includesValue(conditions.schoolEnvironmentRelated, projectInfo.schoolEnvironmentRelated) &&
-    includesValue(conditions.mountainRelated, projectInfo.mountainRelated) &&
-    includesValue(conditions.farmlandRelated, projectInfo.farmlandRelated) &&
-    (!conditions.basementRequired || isBasementProject(projectInfo)) &&
-    (!conditions.largeScaleBuilding || isLargeScaleProject(projectInfo))
+    includesValue(triggerConditions.constructionActions, projectInfo.constructionAction) &&
+    includesValue(triggerConditions.buildingUseGroups, buildingUseGroup) &&
+    includesValue(triggerConditions.districtUnitPlan, projectInfo.districtUnitPlan) &&
+    includesValue(triggerConditions.publicPrivate, projectInfo.publicPrivate) &&
+    includesValue(triggerConditions.heritageRelated, projectInfo.heritageRelated) &&
+    includesValue(triggerConditions.riverRelated, projectInfo.riverRelated) &&
+    includesValue(
+      triggerConditions.schoolEnvironmentRelated,
+      projectInfo.schoolEnvironmentRelated,
+    ) &&
+    includesValue(triggerConditions.mountainRelated, projectInfo.mountainRelated) &&
+    includesValue(triggerConditions.farmlandRelated, projectInfo.farmlandRelated) &&
+    (!triggerConditions.requireBasement || isBasementProject(projectInfo)) &&
+    (!triggerConditions.requireLargeScale || isLargeScaleProject(projectInfo)) &&
+    matchesKeywordConditions(triggerConditions, projectInfo)
   );
 }
 
-function buildAlwaysReason(projectInfo: ProjectInfo) {
-  const fragments = [
+function buildCommonReason(projectInfo: ProjectInfo) {
+  const reasons = [
     `건축물 용도가 “${projectInfo.buildingUse}”으로 입력되었습니다.`,
     `건축 행위가 “${projectInfo.constructionAction}”으로 선택되었습니다.`,
   ];
 
-  if (projectInfo.totalFloorArea !== unknownValue) {
-    fragments.push(`연면적은 “${projectInfo.totalFloorArea}㎡”로 입력되었습니다.`);
+  if (projectInfo.zoningDistrict !== unknownValue) {
+    reasons.push(`용도지역은 “${projectInfo.zoningDistrict}”로 입력되었습니다.`);
   }
 
-  if (projectInfo.aboveGroundFloors !== unknownValue) {
-    fragments.push(`지상층수는 “${projectInfo.aboveGroundFloors}층”으로 입력되었습니다.`);
-  }
-
-  return `기본 공통 검토 항목으로 표시되었습니다. ${fragments.join(" ")}`;
+  return `기본적으로 확인해야 하는 법규 쟁점으로 분류되었습니다. ${reasons.join(" ")}`;
 }
 
-function buildReasonFromConditions(
-  conditions: ChecklistCardConditions,
+function buildTriggerReason(
+  conditions: TriggerConditions,
   projectInfo: ProjectInfo,
   buildingUseGroup: BuildingUseGroup,
-): string {
+) {
   const reasons: string[] = [];
 
   if (conditions.constructionActions?.includes(projectInfo.constructionAction)) {
@@ -245,11 +304,35 @@ function buildReasonFromConditions(
     reasons.push(`농지 관련 여부가 “${projectInfo.farmlandRelated}”로 선택되어 표시되었습니다.`);
   }
 
-  if (conditions.basementRequired && projectInfo.basementFloors !== unknownValue) {
+  if (conditions.locationKeywords?.length) {
+    reasons.push(`대지 위치 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.municipalityKeywords?.length) {
+    reasons.push(`지역 또는 지자체 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.zoningKeywords?.length) {
+    reasons.push(`용도지역 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.useDistrictKeywords?.length) {
+    reasons.push(`용도지구 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.useZoneKeywords?.length) {
+    reasons.push(`용도구역 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.buildingUseKeywords?.length) {
+    reasons.push(`건축물 용도 표현에서 관련 키워드가 확인되어 표시되었습니다.`);
+  }
+
+  if (conditions.requireBasement && projectInfo.basementFloors !== unknownValue) {
     reasons.push(`지하층수가 “${projectInfo.basementFloors}층”으로 입력되어 표시되었습니다.`);
   }
 
-  if (conditions.largeScaleBuilding) {
+  if (conditions.requireLargeScale) {
     const detail: string[] = [];
 
     if (projectInfo.totalFloorArea !== unknownValue) {
@@ -264,56 +347,58 @@ function buildReasonFromConditions(
       detail.push(`높이 ${projectInfo.buildingHeight}m`);
     }
 
-    reasons.push(
-      `${detail.join(", ")} 조건이 대형·고층 건축물 검토 범위에 해당할 가능성이 있어 표시되었습니다.`,
-    );
+    if (detail.length > 0) {
+      reasons.push(`${detail.join(", ")} 조건이 추가 안전 검토 범위에 들어갈 수 있어 표시되었습니다.`);
+    }
   }
 
   return reasons.join(" ");
 }
 
-function buildAppliedReason(
-  template: ChecklistCardTemplate,
+function buildIssue(
+  template: ChecklistIssueTemplate,
   projectInfo: ProjectInfo,
   buildingUseGroup: BuildingUseGroup,
-) {
-  if (template.conditions.always) {
-    return buildAlwaysReason(projectInfo);
-  }
-
-  return buildReasonFromConditions(template.conditions, projectInfo, buildingUseGroup);
+): ChecklistIssue {
+  return {
+    id: template.id,
+    issueType: template.issueType,
+    title: template.title,
+    plainDescription: template.plainDescription,
+    triggerReason: template.triggerConditions.always
+      ? buildCommonReason(projectInfo)
+      : buildTriggerReason(template.triggerConditions, projectInfo, buildingUseGroup),
+    triggerConditions: template.triggerConditions,
+    legalDomains: template.legalDomains,
+    candidateLaws: template.candidateLaws,
+    searchKeywords: template.searchKeywords,
+    checkPoints: template.checkPoints ?? template.requiredInputs,
+    requiredInputs: template.requiredInputs,
+    officialSources: template.officialSources,
+    caution: template.caution ?? "공식 법령과 인허가권자 확인이 필요합니다.",
+    priority: template.priority,
+  };
 }
 
-export function generateChecklist(projectInfo: ProjectInfo): ChecklistCard[] {
+export function generateChecklist(projectInfo: ProjectInfo): ChecklistIssue[] {
   const buildingUseGroup = classifyBuildingUse(projectInfo.buildingUse);
 
-  return checklistTemplates
+  return checklistIssueTemplates
     .filter((template) => matchesConditions(template, projectInfo, buildingUseGroup))
-    .map((template) => ({
-      id: template.id,
-      title: template.title,
-      category: template.category,
-      description: template.description,
-      appliedReason: buildAppliedReason(template, projectInfo, buildingUseGroup),
-      relatedLaws: template.relatedLaws,
-      checkPoints: template.checkPoints,
-      officialSources: template.officialSources,
-      searchKeywords: template.searchKeywords,
-      warning: template.warning ?? "공식 법령과 인허가권자 확인이 필요합니다.",
-    }));
+    .map((template) => buildIssue(template, projectInfo, buildingUseGroup));
 }
 
-export function summarizeChecklist(cards: ChecklistCard[]): Record<ReviewCategory, number> {
+export function summarizeChecklist(cards: ChecklistIssue[]): Record<ChecklistPriority, number> {
   return cards.reduce(
     (summary, card) => {
-      summary[card.category] += 1;
+      summary[card.priority] += 1;
       return summary;
     },
     {
       "필수 검토": 0,
-      "조건부 검토": 0,
-      "추가 확인": 0,
-    } satisfies Record<ReviewCategory, number>,
+      "놓치기 쉬운 항목": 0,
+      "추가 확인 필요": 0,
+    } satisfies Record<ChecklistPriority, number>,
   );
 }
 

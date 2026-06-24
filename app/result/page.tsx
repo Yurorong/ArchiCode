@@ -8,7 +8,7 @@ import {
   summarizeChecklist,
   type ProjectInfo,
 } from "@/src/lib/generateChecklist";
-import type { ChecklistCard } from "@/src/lib/checklistCards";
+import type { ChecklistIssue } from "@/src/lib/checklistCards";
 
 function ProjectInfoRow({
   label,
@@ -58,7 +58,7 @@ function CategorySection({
   title: string;
   description: string;
   count: number;
-  items: ChecklistCard[];
+  items: ChecklistIssue[];
 }) {
   if (items.length === 0) {
     return null;
@@ -86,7 +86,7 @@ function formatWithUnit(value: string, unit: string) {
   return value === "확인 필요" ? value : `${value}${unit}`;
 }
 
-function buildPromptText(projectInfo: ProjectInfo, checklist: ChecklistCard[]) {
+function buildPromptText(projectInfo: ProjectInfo, checklist: ChecklistIssue[]) {
   return [
     "아래 프로젝트 정보와 현재 정리된 검토 항목을 바탕으로, 초기 단계에서 추가로 확인하면 좋은 질문을 만들어줘.",
     "법적 확정 판단은 하지 말고, 실무자가 다음 단계에서 확인할 질문 형태로 정리해줘.",
@@ -176,9 +176,9 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
   const promptText = buildPromptText(projectInfo, checklist);
   const reviewSummaryText = buildProjectReviewSummary(projectInfo);
 
-  const requiredItems = checklist.filter((item) => item.category === "필수 검토");
-  const conditionalItems = checklist.filter((item) => item.category === "조건부 검토");
-  const additionalItems = checklist.filter((item) => item.category === "추가 확인");
+  const requiredItems = checklist.filter((item) => item.priority === "필수 검토");
+  const conditionalItems = checklist.filter((item) => item.priority === "놓치기 쉬운 항목");
+  const additionalItems = checklist.filter((item) => item.priority === "추가 확인 필요");
 
   return (
     <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
@@ -237,12 +237,12 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
                 <SummaryStat label="필수 검토" value={summary["필수 검토"]} tone="brand" />
                 <SummaryStat
                   label="놓치기 쉬운 항목"
-                  value={summary["조건부 검토"]}
+                  value={summary["놓치기 쉬운 항목"]}
                   tone="neutral"
                 />
                 <SummaryStat
-                  label="추가 확인 항목"
-                  value={summary["추가 확인"]}
+                  label="추가 확인 필요"
+                  value={summary["추가 확인 필요"]}
                   tone="olive"
                 />
               </div>
@@ -272,7 +272,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
         />
 
         <CategorySection
-          title="추가 확인 항목"
+          title="추가 확인 필요"
           description="법규 검토를 더 정밀하게 만들기 위해 함께 확인하면 좋은 보완 검토입니다."
           count={additionalItems.length}
           items={additionalItems}
