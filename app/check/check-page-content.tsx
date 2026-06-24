@@ -367,38 +367,6 @@ function AccordionSection({
   );
 }
 
-function StartMethodCard({
-  step,
-  title,
-  description,
-  actionLabel,
-  secondary,
-  onClick,
-}: {
-  step: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  secondary: string;
-  onClick: () => void;
-}) {
-  return (
-    <article className="surface-card hairline-grid p-6 md:p-7">
-      <div className="space-y-5">
-        <div className="space-y-3">
-          <p className="eyebrow-number">{step}</p>
-          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">{title}</h3>
-          <p className="text-sm leading-7 text-slate-600">{description}</p>
-        </div>
-        <div className="architectural-note">{secondary}</div>
-        <button type="button" onClick={onClick} className="ghost-button">
-          {actionLabel}
-        </button>
-      </div>
-    </article>
-  );
-}
-
 function DetailPreviewCard({
   title,
   items,
@@ -417,6 +385,26 @@ function DetailPreviewCard({
             </li>
           ))}
         </ul>
+      </div>
+    </article>
+  );
+}
+
+function FlowCard({
+  step,
+  title,
+  description,
+}: {
+  step: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <article className="surface-card p-5 md:p-6">
+      <div className="space-y-3">
+        <p className="eyebrow-number">{step}</p>
+        <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-slate-900">{title}</h3>
+        <p className="text-sm leading-7 text-slate-600">{description}</p>
       </div>
     </article>
   );
@@ -470,6 +458,56 @@ function ExternalAiPanel() {
           <li>4. 결과 복사</li>
           <li>5. 이곳에 붙여넣기</li>
         </ol>
+      </div>
+    </aside>
+  );
+}
+
+function QuickJumpPanel({
+  onGoHero,
+  onGoDocument,
+  onGoBasicInfo,
+  onGoLandPlan,
+  onGoBuildingDetails,
+  onGoSpecialConditions,
+  onGoExecution,
+}: {
+  onGoHero: () => void;
+  onGoDocument: () => void;
+  onGoBasicInfo: () => void;
+  onGoLandPlan: () => void;
+  onGoBuildingDetails: () => void;
+  onGoSpecialConditions: () => void;
+  onGoExecution: () => void;
+}) {
+  const items = [
+    ["상단", onGoHero],
+    ["문서 정리", onGoDocument],
+    ["기본 정보", onGoBasicInfo],
+    ["상세 정보", onGoLandPlan],
+    ["건축 조건", onGoBuildingDetails],
+    ["특수 조건", onGoSpecialConditions],
+    ["검토 실행", onGoExecution],
+  ] as const;
+
+  return (
+    <aside className="fixed right-6 top-28 z-20 hidden w-[148px] xl:block">
+      <div className="rounded-[18px] border border-slate-200 bg-white/95 p-3 shadow-panel backdrop-blur">
+        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          바로가기
+        </p>
+        <div className="grid gap-1.5">
+          {items.map(([label, handler]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={handler}
+              className="rounded-[12px] border border-transparent px-3 py-2 text-left text-[13px] font-medium text-slate-600 transition hover:border-slate-200 hover:bg-slate-50 hover:text-blue-700"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </aside>
   );
@@ -674,8 +712,14 @@ function parseAiSummary(text: string, currentForm: FormState): ParsedSummaryResu
 
 export default function CheckPageContent() {
   const router = useRouter();
+  const heroSectionRef = useRef<HTMLElement>(null);
   const documentSectionRef = useRef<HTMLElement>(null);
   const formSectionRef = useRef<HTMLFormElement>(null);
+  const basicInfoSectionRef = useRef<HTMLElement>(null);
+  const landPlanSectionRef = useRef<HTMLDivElement>(null);
+  const buildingDetailsSectionRef = useRef<HTMLDivElement>(null);
+  const specialConditionsSectionRef = useRef<HTMLDivElement>(null);
+  const executionSectionRef = useRef<HTMLElement>(null);
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -706,13 +750,6 @@ export default function CheckPageContent() {
   );
 
   const recognizedPreview = recognizedItems.slice(0, 4);
-
-  const currentProjectSummary = [
-    { label: "대지 위치", value: form.location || "아직 입력 전" },
-    { label: "건축물 용도", value: form.buildingUse || "아직 입력 전" },
-    { label: "건축 행위", value: form.constructionAction },
-    { label: "공공 / 민간", value: form.publicPrivate },
-  ];
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -790,135 +827,75 @@ export default function CheckPageContent() {
 
   return (
     <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
+      <QuickJumpPanel
+        onGoHero={() => scrollToSection(heroSectionRef)}
+        onGoDocument={() => scrollToSection(documentSectionRef)}
+        onGoBasicInfo={() => scrollToSection(basicInfoSectionRef)}
+        onGoLandPlan={() => scrollToSection(landPlanSectionRef)}
+        onGoBuildingDetails={() => scrollToSection(buildingDetailsSectionRef)}
+        onGoSpecialConditions={() => scrollToSection(specialConditionsSectionRef)}
+        onGoExecution={() => scrollToSection(executionSectionRef)}
+      />
       <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
-        <section className="surface-card overflow-hidden p-6 md:p-8 xl:p-10">
-          <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1.15fr)_460px]">
-            <div className="space-y-8">
-              <div className="space-y-5">
-                <p className="section-kicker">Architectural Compliance Assistant</p>
-                <h1 className="font-editorial max-w-4xl text-[44px] font-bold leading-[1.08] text-slate-900 md:text-[56px]">
-                  건축 법규 검토 도우미
-                </h1>
-                <p className="max-w-2xl text-[16px] leading-8 text-slate-500">
-                  대지 정보와 건축물 조건을 바탕으로 초기 설계 단계에서 확인해야
-                  할 법규 검토 항목을 빠르게 정리합니다.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection(formSectionRef)}
-                  className="solid-button min-w-[160px]"
-                >
-                  바로 입력하기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection(documentSectionRef)}
-                  className="ghost-button min-w-[180px]"
-                >
-                  지침서 내용 정리하기
-                </button>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                {[
-                  ["검토 기준", "대지 정보와 건축 조건 중심"],
-                  ["결과 형식", "우선순위가 정리된 결과 카드"],
-                  ["사용 흐름", "직접 입력 또는 문서 정리 후 반영"],
-                ].map(([label, value]) => (
-                  <div key={label} className="section-frame p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {label}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{value}</p>
-                  </div>
-                ))}
-              </div>
+        <section
+          ref={heroSectionRef}
+          className="surface-card relative overflow-hidden px-6 py-10 md:px-8 xl:px-10 xl:py-12"
+        >
+          <div
+            className="pointer-events-none absolute right-0 top-0 h-full w-[42%] bg-cover bg-center opacity-[0.18] xl:opacity-[0.22]"
+            style={{ backgroundImage: `url(${heroImage})` }}
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.98))]"
+            aria-hidden="true"
+          />
+          <div className="relative max-w-4xl space-y-7">
+            <div className="space-y-5">
+              <p className="section-kicker">Architectural Compliance Assistant</p>
+              <h1 className="font-editorial max-w-4xl text-[44px] font-bold leading-[1.08] text-slate-900 md:text-[56px]">
+                건축 법규 검토 도우미
+              </h1>
+              <p className="max-w-2xl text-[16px] leading-8 text-slate-500">
+                대지 정보와 건축물 조건을 바탕으로 초기 설계 단계에서 확인해야 할
+                법규 검토 항목을 정리합니다.
+              </p>
             </div>
 
-            <div className="grid gap-4">
-              <div className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-panel">
-                <div className="grid grid-cols-[1fr_130px] items-stretch">
-                  <div className="flex flex-col justify-between gap-6 p-6">
-                    <div className="space-y-3">
-                      <p className="eyebrow-number">Facade Preview</p>
-                      <h2 className="text-[24px] font-semibold tracking-[-0.03em] text-slate-900">
-                        구조는 정돈되고
-                        <br />
-                        화면은 가볍게
-                      </h2>
-                      <p className="text-sm leading-7 text-slate-500">
-                        건축적인 느낌은 얇은 라인과 정리된 여백으로만 남기고,
-                        전체 인상은 현대적인 웹앱처럼 유지합니다.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-xs font-medium text-slate-600">
-                        Layout
-                      </div>
-                      <div className="rounded-2xl bg-blue-50 px-3 py-3 text-center text-xs font-medium text-blue-700">
-                        Review
-                      </div>
-                      <div className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-xs font-medium text-slate-600">
-                        Summary
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    className="min-h-[320px] bg-cover bg-center"
-                    style={{ backgroundImage: `url(${heroImage})` }}
-                    aria-hidden="true"
-                  />
-                </div>
-              </div>
-
-              <div className="section-frame hairline-grid p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <p className="eyebrow-number">Preview</p>
-                    <h3 className="text-lg font-semibold text-slate-900">현재 프로젝트 요약</h3>
-                    <p className="text-sm leading-6 text-slate-500">
-                      입력 중인 정보는 결과 화면 상단 요약 카드로 이어집니다.
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    Live
-                  </div>
-                </div>
-
-                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {currentProjectSummary.map((item) => (
-                    <div key={item.label} className="rounded-[16px] border border-slate-200 bg-white px-4 py-4">
-                      <dt className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                        {item.label}
-                      </dt>
-                      <dd className="mt-2 text-sm font-semibold text-slate-900">{item.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => scrollToSection(formSectionRef)}
+                className="solid-button min-w-[160px]"
+              >
+                바로 입력하기
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(documentSectionRef)}
+                className="ghost-button min-w-[180px]"
+              >
+                지침서 내용 정리하기
+              </button>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-2">
-          <StartMethodCard
-            step="01 직접 입력"
-            title="프로젝트 기본값을 바로 입력"
-            description="위치, 용도, 공사 유형처럼 초기 판단에 핵심이 되는 항목부터 차분하게 채우는 방식입니다."
-            secondary="법규 검토 흐름을 직접 통제하고 싶을 때 적합합니다."
-            actionLabel="기본 정보 입력으로 이동"
-            onClick={() => scrollToSection(formSectionRef)}
+        <section className="grid gap-5 lg:grid-cols-3">
+          <FlowCard
+            step="01"
+            title="정보 입력"
+            description="대지 위치, 용도, 면적 등 알고 있는 정보를 입력합니다."
           />
-          <StartMethodCard
-            step="02 문서에서 정보 가져오기"
-            title="지침서나 공모 문서를 먼저 정리"
-            description="외부 AI에 문서를 첨부하고 이 사이트에서 복사한 프롬프트를 넣어 필요한 정보를 정리한 뒤, 아래 입력칸에 붙여넣는 방식입니다."
-            secondary="설계지침서, 사업 설명자료, 발주 문서가 먼저 있는 경우에 적합합니다."
-            actionLabel="문서 기반 입력으로 이동"
-            onClick={() => scrollToSection(documentSectionRef)}
+          <FlowCard
+            step="02"
+            title="검토 항목 정리"
+            description="입력 조건에 따라 먼저 확인해야 할 법규 검토 항목을 정리합니다."
+          />
+          <FlowCard
+            step="03"
+            title="결과 활용"
+            description="결과를 복사하거나 저장하고, 필요하면 개인 AI로 요약할 수 있습니다."
           />
         </section>
 
@@ -1104,7 +1081,7 @@ export default function CheckPageContent() {
             </div>
           ) : null}
 
-          <section className="surface-card p-6 md:p-8">
+          <section ref={basicInfoSectionRef} className="surface-card p-6 md:p-8">
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
               <div className="space-y-6">
                 <StepLabel step="03" title="기본 정보 입력" />
@@ -1243,7 +1220,8 @@ export default function CheckPageContent() {
             </div>
           </section>
 
-          <AccordionSection
+          <div ref={landPlanSectionRef}>
+            <AccordionSection
             step="04"
             title="상세 조건 입력"
             description="용도지역, 층수, 공공 여부, 특수 조건을 더 입력하면 검토 결과를 더 세밀하게 정리할 수 있습니다."
@@ -1310,9 +1288,11 @@ export default function CheckPageContent() {
                 helperText="해당 여부를 모르더라도 검토는 가능합니다."
               />
             </div>
-          </AccordionSection>
+            </AccordionSection>
+          </div>
 
-          <AccordionSection
+          <div ref={buildingDetailsSectionRef}>
+            <AccordionSection
             step="04A"
             title="건축물 상세 조건"
             description="층수, 높이, 공공 여부 같은 정보는 일부 검토 항목의 적용 여부를 더 선명하게 만들어 줍니다."
@@ -1390,9 +1370,11 @@ export default function CheckPageContent() {
                 helperText="발주 성격에 따라 추가 절차나 기준이 달라질 수 있습니다."
               />
             </div>
-          </AccordionSection>
+            </AccordionSection>
+          </div>
 
-          <AccordionSection
+          <div ref={specialConditionsSectionRef}>
+            <AccordionSection
             step="04B"
             title="특수 조건 입력"
             description="문화재, 하천, 학교환경, 산지, 농지 인접 여부는 놓치기 쉬운 별도 검토를 만들어낼 수 있습니다."
@@ -1471,9 +1453,10 @@ export default function CheckPageContent() {
                 }
               />
             </div>
-          </AccordionSection>
+            </AccordionSection>
+          </div>
 
-          <section className="surface-card p-6 md:p-8">
+          <section ref={executionSectionRef} className="surface-card p-6 md:p-8">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-end">
               <div className="space-y-5">
                 <StepLabel step="05" title="검토 실행" />
