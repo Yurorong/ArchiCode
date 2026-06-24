@@ -422,6 +422,56 @@ function DetailPreviewCard({
   );
 }
 
+function ExternalAiPanel() {
+  return (
+    <aside className="group section-frame hairline-grid h-fit p-5 transition duration-200 hover:-translate-y-1 hover:shadow-panel xl:sticky xl:top-6">
+      <div className="space-y-4">
+        <p className="eyebrow-number">External AI</p>
+        <h3 className="font-editorial text-3xl font-semibold tracking-[-0.03em] text-slate-900">
+          외부 AI로 문서 정리하기
+        </h3>
+        <p className="text-sm leading-7 text-slate-600">
+          이 사이트는 AI를 직접 실행하지 않습니다. ChatGPT 또는 Gemini에서
+          문서를 첨부해 정보를 정리한 뒤, 그 결과를 이곳에 붙여넣어 입력값을
+          채웁니다.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-3">
+        <a
+          href="https://chatgpt.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between border border-[rgba(36,56,77,0.18)] bg-[rgba(36,56,77,0.06)] px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-brand-700 hover:bg-[rgba(36,56,77,0.1)]"
+        >
+          <span>ChatGPT 열기</span>
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Open</span>
+        </a>
+        <a
+          href="https://gemini.google.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between border border-[rgba(26,32,37,0.14)] bg-white/85 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-700 hover:bg-white"
+        >
+          <span>Gemini 열기</span>
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Open</span>
+        </a>
+      </div>
+
+      <div className="mt-6 border-t muted-divider pt-5">
+        <p className="label-text">사용 흐름</p>
+        <ol className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
+          <li>1. 프롬프트 복사</li>
+          <li>2. 외부 AI 열기</li>
+          <li>3. 문서 첨부</li>
+          <li>4. 결과 복사</li>
+          <li>5. 이곳에 붙여넣기</li>
+        </ol>
+      </div>
+    </aside>
+  );
+}
+
 function scrollToSection<T extends HTMLElement>(ref: RefObject<T | null>) {
   ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -833,7 +883,7 @@ export default function CheckPageContent() {
           <StartMethodCard
             step="02 문서에서 정보 가져오기"
             title="지침서나 공모 문서를 먼저 정리"
-            description="문서 기반으로 필요한 항목을 추출한 뒤 입력칸에 반영하는 방식입니다. AI 정리 결과를 붙여 넣어 빠르게 시작할 수 있습니다."
+            description="외부 AI에 문서를 첨부하고 이 사이트에서 복사한 프롬프트를 넣어 필요한 정보를 정리한 뒤, 아래 입력칸에 붙여넣는 방식입니다."
             secondary="설계지침서, 사업 설명자료, 발주 문서가 먼저 있는 경우에 적합합니다."
             actionLabel="문서 기반 입력으로 이동"
             onClick={() => scrollToSection(documentSectionRef)}
@@ -841,101 +891,112 @@ export default function CheckPageContent() {
         </section>
 
         <section ref={documentSectionRef} className="surface-card p-6 md:p-8">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <ExternalAiPanel />
+
             <div className="space-y-6">
               <StepLabel step="02" title="지침서에서 정보 가져오기" />
               <p className="text-sm leading-7 text-slate-600">
-                설계지침서나 사업 문서를 AI에게 먼저 정리시키고, 아래 형식으로
-                받은 결과를 붙여 넣으면 핵심 항목을 자동으로 채울 수 있습니다.
+                설계공모지침서나 과업이행서가 있다면, ChatGPT 또는 Gemini에 문서를
+                직접 첨부한 뒤 이 사이트에서 복사한 프롬프트를 붙여넣어 필요한
+                정보를 정리할 수 있습니다. 정리된 결과를 다시 이곳에 붙여넣으면
+                입력값을 채우는 데 도움을 받을 수 있습니다.
               </p>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="section-frame p-4">
-                  <p className="eyebrow-number">Prompt</p>
-                  <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
-                    문서 정리 프롬프트 복사
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    현재 기능은 그대로 유지되며, 복사한 뒤 GPT나 Gemini에 그대로
-                    붙여 넣어 문서 요약을 받을 수 있습니다.
-                  </p>
+              <div className="section-frame p-5">
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={handleCopyPrompt} className="solid-button">
+                    프롬프트 복사
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPromptGuide((current) => !current)}
+                    className="ghost-button"
+                  >
+                    {showPromptGuide ? "사용 방법 닫기" : "사용 방법 보기"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPromptPreview((current) => !current)}
+                    className="ghost-button"
+                  >
+                    {showPromptPreview ? "프롬프트 닫기" : "프롬프트 미리보기"}
+                  </button>
                 </div>
-                <div className="section-frame p-4">
-                  <p className="eyebrow-number">Apply</p>
-                  <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
-                    AI 정리 결과 붙여넣기
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    인식된 항목과 확인이 더 필요한 항목을 구분해서 바로 보여줍니다.
-                  </p>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <div className="section-frame p-4">
+                    <p className="eyebrow-number">Copy</p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">프롬프트 복사</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      상단의 버튼으로 외부 AI에 붙여넣을 문장을 복사합니다.
+                    </p>
+                  </div>
+                  <div className="section-frame p-4">
+                    <p className="eyebrow-number">Guide</p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">사용 방법 보기</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      왼쪽의 바로가기와 아래 입력칸을 어떤 순서로 쓰는지 확인합니다.
+                    </p>
+                  </div>
+                  <div className="section-frame p-4">
+                    <p className="eyebrow-number">Preview</p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">프롬프트 미리보기</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      실제로 복사되는 프롬프트 내용을 접기/펼치기로 확인합니다.
+                    </p>
+                  </div>
                 </div>
+
+                <p className="mt-4 helper-text">
+                  {copyState === "copied" && "프롬프트를 클립보드에 복사했습니다."}
+                  {copyState === "failed" &&
+                    "브라우저에서 복사를 허용하지 않아 프롬프트 복사에 실패했습니다."}
+                  {copyState === "idle" &&
+                    "복사한 문장은 왼쪽의 ChatGPT 또는 Gemini 바로가기에서 바로 붙여넣어 사용할 수 있습니다."}
+                </p>
+
+                {showPromptGuide ? (
+                  <div className="mt-5 section-frame p-5">
+                    <p className="label-text">사용 방법</p>
+                    <ol className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
+                      <li>1. 상단의 [프롬프트 복사] 버튼을 누릅니다.</li>
+                      <li>2. 왼쪽의 [ChatGPT 열기] 또는 [Gemini 열기] 버튼으로 외부 AI를 엽니다.</li>
+                      <li>3. 설계공모지침서, 과업이행서, 설계지침서 파일을 외부 AI에 첨부합니다.</li>
+                      <li>4. 복사한 프롬프트를 붙여넣고 실행합니다.</li>
+                      <li>5. AI가 정리해준 결과를 복사합니다.</li>
+                      <li>6. 아래의 [AI가 정리한 내용 붙여넣기] 칸에 붙여넣습니다.</li>
+                      <li>7. [입력값 채우기] 버튼을 눌러 입력폼에 반영합니다.</li>
+                      <li>8. 채워진 내용을 확인한 뒤 [법규 검토 항목 찾기]를 누릅니다.</li>
+                    </ol>
+                  </div>
+                ) : null}
+
+                {showPromptPreview ? (
+                  <div className="mt-5 section-frame p-5">
+                    <p className="label-text">프롬프트 미리보기</p>
+                    <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+                      {documentAnalysisPrompt}
+                    </pre>
+                  </div>
+                ) : null}
               </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={handleCopyPrompt} className="solid-button">
-                  문서 정리 프롬프트 복사
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPromptPreview((current) => !current)}
-                  className="ghost-button"
-                >
-                  {showPromptPreview ? "프롬프트 닫기" : "프롬프트 미리보기"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPromptGuide((current) => !current)}
-                  className="ghost-button"
-                >
-                  {showPromptGuide ? "사용 가이드 닫기" : "사용 가이드"}
-                </button>
-              </div>
-
-              <p className="helper-text">
-                {copyState === "copied" && "프롬프트를 클립보드에 복사했습니다."}
-                {copyState === "failed" &&
-                  "브라우저에서 복사를 허용하지 않아 프롬프트 복사에 실패했습니다."}
-                {copyState === "idle" &&
-                  "복사한 프롬프트는 외부 AI에 그대로 붙여 넣어 사용할 수 있습니다."}
-              </p>
-
-              {showPromptGuide ? (
-                <div className="section-frame p-5">
-                  <p className="label-text">권장 사용 흐름</p>
-                  <ol className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
-                    <li>1. 설계지침서나 사업 설명 자료를 AI에 업로드합니다.</li>
-                    <li>2. 위 프롬프트를 함께 넣어 항목별 정리를 요청합니다.</li>
-                    <li>3. 받은 결과를 오른쪽 입력창에 그대로 붙여 넣습니다.</li>
-                    <li>4. 자동 반영 후 비어 있는 항목만 직접 보완합니다.</li>
-                  </ol>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-5">
-              {showPromptPreview ? (
-                <div className="section-frame p-5">
-                  <p className="label-text">프롬프트 미리보기</p>
-                  <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
-                    {documentAnalysisPrompt}
-                  </pre>
-                </div>
-              ) : null}
 
               <div className="section-frame p-5">
                 <Field
-                  label="AI 정리 결과 붙여넣기"
-                  description="문서에서 정리된 내용을 그대로 붙여 넣어 주세요. 항목명은 프롬프트 형식을 그대로 유지할수록 인식률이 좋습니다."
+                  label="AI가 정리한 내용 붙여넣기"
+                  description="ChatGPT 또는 Gemini가 정리해준 결과를 그대로 붙여넣으세요. 붙여넣은 내용에서 읽을 수 있는 항목만 입력폼에 자동으로 반영됩니다. 잘못 들어간 값은 직접 수정할 수 있습니다."
                 >
                   <textarea
                     value={pastedAiSummary}
                     onChange={(event) => setPastedAiSummary(event.target.value)}
                     placeholder={`[기본 정보]
-대지 위치: 서울특별시 종로구 ...
-지역 / 지자체: 서울특별시 종로구
-건축물 용도: 근린생활시설
-대지면적: 1234.56
-연면적: 987.65
+사업명: ○○문화복합센터 건립사업
+대지 위치: ○○시 ○○구 ○○동 000-00번지 일원
+지역 / 지자체: ○○시 ○○구
+건축물 용도: 문화 및 집회시설
+대지면적: 1234.56㎡
+연면적: 987.65㎡
 건축 행위: 신축`}
                     className="input-field input-area mt-2"
                   />
@@ -946,15 +1007,15 @@ export default function CheckPageContent() {
                     입력값 채우기
                   </button>
                   <p className="helper-text">
-                    {applyState === "applied" && "입력칸에 값을 채웠습니다."}
+                    {applyState === "applied" && "아래 입력폼에 값을 채웠습니다."}
                     {applyState === "partial" &&
-                      "일부 항목만 적용되었습니다. 비어 있는 값은 직접 확인해 주세요."}
+                      "일부 항목만 반영되었습니다. 비어 있는 값은 아래 입력폼에서 직접 확인해 주세요."}
                     {applyState === "empty" &&
-                      "먼저 AI가 정리한 내용을 붙여 넣어 주세요."}
+                      "먼저 외부 AI가 정리한 내용을 위 입력칸에 붙여넣어 주세요."}
                     {applyState === "not-found" &&
-                      "항목명을 찾지 못했습니다. 프롬프트 형식과 라벨명을 다시 확인해 주세요."}
+                      "항목명을 찾지 못했습니다. 미리보기의 형식과 라벨명을 다시 확인해 주세요."}
                     {applyState === "idle" &&
-                      "붙여 넣은 결과를 분석해 주요 입력 항목을 자동 반영합니다."}
+                      "붙여넣은 내용에서 읽을 수 있는 항목만 아래 입력폼에 반영됩니다."}
                   </p>
                 </div>
 
@@ -962,7 +1023,7 @@ export default function CheckPageContent() {
                   <div className="mt-6 grid gap-4 md:grid-cols-2">
                     <div className="section-frame p-4">
                       <p className="eyebrow-number">Recognized</p>
-                      <h3 className="mt-2 text-base font-semibold text-slate-900">인식된 항목</h3>
+                      <h3 className="mt-2 text-base font-semibold text-slate-900">읽은 항목</h3>
                       {recognizedPreview.length > 0 ? (
                         <ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
                           {recognizedPreview.map((item) => (
@@ -975,7 +1036,7 @@ export default function CheckPageContent() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="mt-3 text-sm text-slate-500">인식된 항목이 없습니다.</p>
+                        <p className="mt-3 text-sm text-slate-500">읽은 항목이 없습니다.</p>
                       )}
                     </div>
 
@@ -1416,7 +1477,7 @@ export default function CheckPageContent() {
                 결과가 구체적으로 정리됩니다.
               </p>
               <button type="submit" className="solid-button min-w-[180px]">
-                검토 항목 정리하기
+                법규 검토 항목 찾기
               </button>
             </div>
           </section>
