@@ -8,6 +8,7 @@ import {
   type ProjectInfo,
 } from "@/src/lib/generateChecklist";
 import type { ChecklistIssue } from "@/src/lib/checklistCards";
+import { enrichChecklistWithLawCandidates } from "@/src/lib/lawOpenApi";
 
 function formatWithUnit(value: string, unit: string) {
   return value === "확인 필요" ? value : `${value}${unit}`;
@@ -97,7 +98,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
     );
   }
 
-  const checklist = generateChecklist(projectInfo);
+  const checklist = await enrichChecklistWithLawCandidates(generateChecklist(projectInfo));
   const summary = summarizeChecklist(checklist);
   const promptText = buildPromptText(projectInfo, checklist);
   const reviewSummaryText = buildProjectReviewSummary(projectInfo);

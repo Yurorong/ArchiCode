@@ -41,6 +41,16 @@ export type ResultCategory =
   | "조례"
   | "특수조건";
 
+export type LawSearchCandidate = {
+  lawName: string;
+  lawId: string;
+  mst: string;
+  promulgationDate: string;
+  enforcementDate: string;
+  ministry: string;
+  lawType: string;
+};
+
 export type ChecklistIssue = {
   id: string;
   issueType: IssueType;
@@ -57,6 +67,8 @@ export type ChecklistIssue = {
   requiredInputs: string[];
   caution: string;
   priority: ChecklistPriority;
+  relatedLawCandidates?: LawSearchCandidate[];
+  relatedLawSearchFailed?: boolean;
 };
 
 export const defaultCaution =

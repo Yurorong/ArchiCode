@@ -53,6 +53,18 @@ function CompactList({
   );
 }
 
+function getRelatedLawCandidateItems(item: ChecklistIssue) {
+  if (item.relatedLawCandidates && item.relatedLawCandidates.length > 0) {
+    return item.relatedLawCandidates.map((candidate) => candidate.lawName);
+  }
+
+  if (item.relatedLawSearchFailed) {
+    return ["공식 법령 후보를 불러오지 못했습니다. 직접 확인이 필요합니다."];
+  }
+
+  return ["검색 결과 기준 후보가 없습니다. 공식 법령 확인 필요"];
+}
+
 export default function ChecklistDetailCard({
   item,
 }: {
@@ -88,7 +100,7 @@ export default function ChecklistDetailCard({
 
           <div className="rounded-[14px] border border-slate-200 bg-slate-50/80 px-3 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              왜 표시되었는지
+              왜 표시되었나요?
             </p>
             <p className="mt-1.5 text-sm leading-6 text-slate-700">{item.triggerReason}</p>
           </div>
@@ -106,7 +118,7 @@ export default function ChecklistDetailCard({
       {open ? (
         <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4">
           <CompactList title="확인할 내용" items={item.checkPoints} />
-          <CompactList title="관련 가능 법령" items={item.candidateLaws} />
+          <CompactList title="관련 법령 후보" items={getRelatedLawCandidateItems(item)} />
           <CompactList title="검색 키워드" items={item.searchKeywords} />
           <div className="rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
