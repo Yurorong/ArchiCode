@@ -35,10 +35,10 @@ function SummaryStat({
 }) {
   const toneClass =
     tone === "brand"
-      ? "bg-brand-50/80"
+      ? "bg-brand-50/80 border-blue-100"
       : tone === "olive"
-        ? "bg-[#eff3ea]"
-        : "bg-white/80";
+        ? "bg-slate-50 border-slate-200"
+        : "bg-white/90 border-slate-200";
 
   return (
     <div className={`surface-card p-5 ${toneClass}`}>
@@ -153,7 +153,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
           <section className="surface-card p-8 md:p-10">
             <div className="space-y-5">
               <p className="section-kicker">Input Required</p>
-              <h1 className="font-editorial text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+              <h1 className="font-editorial text-4xl font-bold text-slate-900 md:text-5xl">
                 입력 정보가 더 필요합니다
               </h1>
               <p className="max-w-2xl text-base leading-8 text-slate-600">
@@ -186,7 +186,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
             <div className="space-y-6">
               <div className="space-y-4">
                 <p className="section-kicker">Review Output</p>
-                <h1 className="font-editorial text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+                <h1 className="font-editorial text-4xl font-bold text-slate-900 md:text-5xl">
                   프로젝트 검토 결과
                 </h1>
                 <p className="max-w-3xl text-base leading-8 text-slate-600">
@@ -220,7 +220,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
             <aside className="hairline-grid section-frame flex flex-col justify-between gap-6 p-5">
               <div className="space-y-3">
                 <p className="eyebrow-number">Summary</p>
-                <h2 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                <h2 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
                   검토 결과 요약
                 </h2>
                 <p className="text-sm leading-7 text-slate-600">

@@ -424,13 +424,16 @@ function DetailPreviewCard({
 
 function ExternalAiPanel() {
   return (
-    <aside className="group section-frame hairline-grid h-fit p-5 transition duration-200 hover:-translate-y-1 hover:shadow-panel xl:sticky xl:top-6">
+    <aside className="group h-fit rounded-[20px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-5 shadow-panel transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] xl:sticky xl:top-6">
       <div className="space-y-4">
-        <p className="eyebrow-number">External AI</p>
-        <h3 className="font-editorial text-3xl font-semibold tracking-[-0.03em] text-slate-900">
+        <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          External AI
+        </div>
+        <h3 className="font-editorial text-2xl font-bold text-slate-900">
           외부 AI로 문서 정리하기
         </h3>
-        <p className="text-sm leading-7 text-slate-600">
+        <p className="text-[14px] leading-7 text-slate-600">
           이 사이트는 AI를 직접 실행하지 않습니다. ChatGPT 또는 Gemini에서
           문서를 첨부해 정보를 정리한 뒤, 그 결과를 이곳에 붙여넣어 입력값을
           채웁니다.
@@ -442,16 +445,16 @@ function ExternalAiPanel() {
           href="https://chatgpt.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between border border-[rgba(36,56,77,0.18)] bg-[rgba(36,56,77,0.06)] px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-brand-700 hover:bg-[rgba(36,56,77,0.1)]"
+          className="flex items-center justify-between rounded-[16px] border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:border-blue-400 hover:bg-blue-100"
         >
           <span>ChatGPT 열기</span>
-          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Open</span>
+          <span className="text-xs uppercase tracking-[0.18em] text-blue-700">Open</span>
         </a>
         <a
           href="https://gemini.google.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between border border-[rgba(26,32,37,0.14)] bg-white/85 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-700 hover:bg-white"
+          className="flex items-center justify-between rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
         >
           <span>Gemini 열기</span>
           <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Open</span>
@@ -460,7 +463,7 @@ function ExternalAiPanel() {
 
       <div className="mt-6 border-t muted-divider pt-5">
         <p className="label-text">사용 흐름</p>
-        <ol className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
+        <ol className="mt-3 grid gap-2 text-[13px] leading-6 text-slate-600">
           <li>1. 프롬프트 복사</li>
           <li>2. 외부 AI 열기</li>
           <li>3. 문서 첨부</li>
@@ -788,86 +791,115 @@ export default function CheckPageContent() {
   return (
     <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
-        <section className="relative overflow-hidden border border-[rgba(255,255,255,0.14)] bg-slate-900 text-white shadow-panel">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${heroImage})` }}
-            aria-hidden="true"
-          />
-          <div
-            className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,32,0.92),rgba(20,29,39,0.72),rgba(22,34,50,0.86))]"
-            aria-hidden="true"
-          />
-          <div className="relative grid min-h-[620px] gap-10 px-6 py-8 md:px-10 md:py-10 xl:grid-cols-[minmax(0,1.45fr)_360px]">
-            <div className="flex flex-col justify-between gap-10">
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-300">
-                    Architectural Compliance Assistant
-                  </p>
-                  <h1 className="font-editorial max-w-4xl text-5xl font-semibold leading-[1.1] tracking-[-0.04em] md:text-6xl">
-                    건축 법규 검토 도우미
-                  </h1>
-                  <p className="max-w-3xl text-base leading-8 text-slate-200 md:text-lg">
-                    대지 정보, 건축물 용도, 설계지침서 내용을 바탕으로 초기 설계
-                    단계에서 확인해야 할 법규 검토 항목을 빠르게 정리합니다.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(formSectionRef)}
-                    className="solid-button min-w-[180px]"
-                  >
-                    직접 입력 시작하기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(documentSectionRef)}
-                    className="ghost-button min-w-[180px] border-white/20 bg-white/10 text-white hover:border-white/50 hover:text-white"
-                  >
-                    지침서에서 정보 가져오기
-                  </button>
-                </div>
+        <section className="surface-card overflow-hidden p-6 md:p-8 xl:p-10">
+          <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1.15fr)_460px]">
+            <div className="space-y-8">
+              <div className="space-y-5">
+                <p className="section-kicker">Architectural Compliance Assistant</p>
+                <h1 className="font-editorial max-w-4xl text-[44px] font-bold leading-[1.08] text-slate-900 md:text-[56px]">
+                  건축 법규 검토 도우미
+                </h1>
+                <p className="max-w-2xl text-[16px] leading-8 text-slate-500">
+                  대지 정보와 건축물 조건을 바탕으로 초기 설계 단계에서 확인해야
+                  할 법규 검토 항목을 빠르게 정리합니다.
+                </p>
               </div>
 
-              <div className="grid gap-px border border-white/12 bg-white/12 md:grid-cols-3">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(formSectionRef)}
+                  className="solid-button min-w-[160px]"
+                >
+                  바로 입력하기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(documentSectionRef)}
+                  className="ghost-button min-w-[180px]"
+                >
+                  지침서 내용 정리하기
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
                 {[
-                  ["검토 기준", "대지 정보 + 용도 + 특수 조건"],
-                  ["출력 방식", "초기 설계용 검토 체크리스트"],
-                  ["작업 흐름", "입력 정리 후 결과 카드로 안내"],
+                  ["검토 기준", "대지 정보와 건축 조건 중심"],
+                  ["결과 형식", "우선순위가 정리된 결과 카드"],
+                  ["사용 흐름", "직접 입력 또는 문서 정리 후 반영"],
                 ].map(([label, value]) => (
-                  <div key={label} className="bg-slate-900/40 px-5 py-4 backdrop-blur-sm">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-100">{value}</p>
+                  <div key={label} className="section-frame p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{value}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <aside className="section-frame flex flex-col justify-between gap-6 bg-white/10 p-6 text-white">
-              <div className="space-y-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Preview</p>
-                <h2 className="font-editorial text-3xl font-semibold tracking-[-0.03em]">
-                  현재 프로젝트 요약
-                </h2>
-                <p className="text-sm leading-7 text-slate-200">
-                  입력 중인 정보는 아래처럼 정리되어 결과 화면 상단 요약 카드로
-                  이어집니다.
-                </p>
-              </div>
-              <dl className="grid gap-px border border-white/10 bg-white/10">
-                {currentProjectSummary.map((item) => (
-                  <div key={item.label} className="bg-slate-900/45 px-4 py-4">
-                    <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                      {item.label}
-                    </dt>
-                    <dd className="mt-2 text-base font-medium text-white">{item.value}</dd>
+            <div className="grid gap-4">
+              <div className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-panel">
+                <div className="grid grid-cols-[1fr_130px] items-stretch">
+                  <div className="flex flex-col justify-between gap-6 p-6">
+                    <div className="space-y-3">
+                      <p className="eyebrow-number">Facade Preview</p>
+                      <h2 className="text-[24px] font-semibold tracking-[-0.03em] text-slate-900">
+                        구조는 정돈되고
+                        <br />
+                        화면은 가볍게
+                      </h2>
+                      <p className="text-sm leading-7 text-slate-500">
+                        건축적인 느낌은 얇은 라인과 정리된 여백으로만 남기고,
+                        전체 인상은 현대적인 웹앱처럼 유지합니다.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-xs font-medium text-slate-600">
+                        Layout
+                      </div>
+                      <div className="rounded-2xl bg-blue-50 px-3 py-3 text-center text-xs font-medium text-blue-700">
+                        Review
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-xs font-medium text-slate-600">
+                        Summary
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </dl>
-            </aside>
+                  <div
+                    className="min-h-[320px] bg-cover bg-center"
+                    style={{ backgroundImage: `url(${heroImage})` }}
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+
+              <div className="section-frame hairline-grid p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="eyebrow-number">Preview</p>
+                    <h3 className="text-lg font-semibold text-slate-900">현재 프로젝트 요약</h3>
+                    <p className="text-sm leading-6 text-slate-500">
+                      입력 중인 정보는 결과 화면 상단 요약 카드로 이어집니다.
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    Live
+                  </div>
+                </div>
+
+                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {currentProjectSummary.map((item) => (
+                    <div key={item.label} className="rounded-[16px] border border-slate-200 bg-white px-4 py-4">
+                      <dt className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                        {item.label}
+                      </dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-900">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
           </div>
         </section>
 

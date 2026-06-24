@@ -9,15 +9,15 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: "#eef2f6",
-          100: "#dde5ec",
-          500: "#4f6a82",
-          700: "#24384d",
-          900: "#192a3a",
+          50: "#eff6ff",
+          100: "#dbeafe",
+          500: "#3b82f6",
+          700: "#2563eb",
+          900: "#1d4ed8",
         },
       },
       boxShadow: {
-        panel: "0 24px 60px rgba(26, 32, 37, 0.08)",
+        panel: "0 10px 30px rgba(15, 23, 42, 0.06)",
       },
     },
   },

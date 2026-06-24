@@ -28,7 +28,7 @@ export default function PromptCopySection({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">
         <div className="space-y-4">
           <p className="section-kicker">AI Follow-up</p>
-          <h2 className="font-editorial text-3xl font-semibold tracking-[-0.03em] text-slate-900">
+          <h2 className="font-editorial text-[28px] font-bold text-slate-900">
             결과를 바탕으로 다음 질문 만들기
           </h2>
           <p className="text-sm leading-7 text-slate-600">

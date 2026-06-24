@@ -13,7 +13,7 @@ const categoryStyles: Record<
 > = {
   "필수 검토": {
     label: "필수 검토",
-    badgeClass: "bg-brand-50 text-brand-700 border-brand-100",
+    badgeClass: "bg-brand-50 text-brand-700 border-blue-100",
     borderClass: "border-l-[3px] border-l-brand-700",
   },
   "조건부 검토": {
@@ -23,8 +23,8 @@ const categoryStyles: Record<
   },
   "추가 확인": {
     label: "추가 확인 항목",
-    badgeClass: "bg-[#eef2e8] text-[#4e5f3d] border-[#d8e2c7]",
-    borderClass: "border-l-[3px] border-l-[#708259]",
+    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
+    borderClass: "border-l-[3px] border-l-slate-400",
   },
 };
 
@@ -46,7 +46,7 @@ export default function ChecklistDetailCard({
             >
               {categoryStyle.label}
             </span>
-            <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+            <h3 className="text-[22px] font-semibold tracking-[-0.03em] text-slate-900">
               {item.title}
             </h3>
             <p className="max-w-3xl text-sm leading-7 text-slate-600">{item.description}</p>
