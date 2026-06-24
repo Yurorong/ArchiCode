@@ -5,6 +5,21 @@ const DISPLAY_LIMIT = "5";
 const RAW_TEXT_PREVIEW_LIMIT = 500;
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (compatible; ArchiCodeKR/1.0; +https://archi-code-kappa.vercel.app/)";
+const DEFAULT_REFERER = "https://archi-code-kappa.vercel.app/";
+
+const KOREAN_KEYS = {
+  lawName: "\uBC95\uB839\uBA85\uD55C\uAE00",
+  lawNameAlt: "\uBC95\uB839\uBA85",
+  lawId: "\uBC95\uB839ID",
+  mst: "\uBC95\uB839\uC77C\uB828\uBC88\uD638",
+  promulgationDate: "\uACF5\uD3EC\uC77C\uC790",
+  enforcementDate: "\uC2DC\uD589\uC77C\uC790",
+  ministry: "\uC18C\uAD00\uBD80\uCC98\uBA85",
+  lawType: "\uBC95\uB839\uAD6C\uBD84\uBA85",
+  detailLink: "\uBC95\uB839\uC0C1\uC138\uB9C1\uD06C",
+  result: "\uACB0\uACFC",
+  message: "\uBA54\uC2DC\uC9C0",
+} as const;
 
 type LawSearchItem = {
   lawName: string;
@@ -58,7 +73,7 @@ function toArray<T>(value: T | T[] | null | undefined) {
   return [value];
 }
 
-function getString(record: Record<string, unknown>, keys: string[]) {
+function getString(record: Record<string, unknown>, keys: readonly string[]) {
   for (const key of keys) {
     const value = record[key];
 
@@ -86,14 +101,15 @@ function looksLikeXml(rawText: string) {
 
 function looksLikeLawItem(record: Record<string, unknown>) {
   return [
-    "법령명한글",
-    "법령ID",
-    "법령일련번호",
-    "공포일자",
-    "시행일자",
-    "소관부처명",
-    "법령구분명",
-    "법령상세링크",
+    KOREAN_KEYS.lawName,
+    KOREAN_KEYS.lawNameAlt,
+    KOREAN_KEYS.lawId,
+    KOREAN_KEYS.mst,
+    KOREAN_KEYS.promulgationDate,
+    KOREAN_KEYS.enforcementDate,
+    KOREAN_KEYS.ministry,
+    KOREAN_KEYS.lawType,
+    KOREAN_KEYS.detailLink,
     "lawName",
     "lawId",
     "mst",
@@ -106,7 +122,7 @@ function looksLikeLawItem(record: Record<string, unknown>) {
 }
 
 function normalizeLawItem(record: Record<string, unknown>): LawSearchItem | null {
-  const lawName = getString(record, ["법령명한글", "법령명", "lawName"]);
+  const lawName = getString(record, [KOREAN_KEYS.lawName, KOREAN_KEYS.lawNameAlt, "lawName"]);
 
   if (!lawName) {
     return null;
@@ -114,13 +130,13 @@ function normalizeLawItem(record: Record<string, unknown>): LawSearchItem | null
 
   return {
     lawName,
-    lawId: getString(record, ["법령ID", "lawId"]),
-    mst: getString(record, ["법령일련번호", "MST", "mst"]),
-    promulgationDate: getString(record, ["공포일자", "promulgationDate"]),
-    enforcementDate: getString(record, ["시행일자", "enforcementDate"]),
-    ministry: getString(record, ["소관부처명", "ministry"]),
-    lawType: getString(record, ["법령구분명", "법령종류명", "lawType"]),
-    detailLink: getString(record, ["법령상세링크", "detailLink"]),
+    lawId: getString(record, [KOREAN_KEYS.lawId, "lawId"]),
+    mst: getString(record, [KOREAN_KEYS.mst, "MST", "mst"]),
+    promulgationDate: getString(record, [KOREAN_KEYS.promulgationDate, "promulgationDate"]),
+    enforcementDate: getString(record, [KOREAN_KEYS.enforcementDate, "enforcementDate"]),
+    ministry: getString(record, [KOREAN_KEYS.ministry, "ministry"]),
+    lawType: getString(record, [KOREAN_KEYS.lawType, "lawType"]),
+    detailLink: getString(record, [KOREAN_KEYS.detailLink, "detailLink"]),
   };
 }
 
@@ -174,11 +190,7 @@ function extractItems(payload: unknown) {
   );
 }
 
-function withDebug(
-  body: Record<string, unknown>,
-  debug: boolean,
-  debugInfo: DebugInfo,
-) {
+function withDebug(body: Record<string, unknown>, debug: boolean, debugInfo: DebugInfo) {
   if (!debug) {
     return body;
   }
@@ -195,6 +207,7 @@ export async function GET(request: Request) {
   const debug = searchParams.get("debug") === "1";
   const oc = process.env.LAW_OPEN_API_OC?.trim();
   const userAgent = process.env.LAW_USER_AGENT?.trim() || DEFAULT_USER_AGENT;
+  const referer = process.env.LAW_API_REFERER?.trim() || DEFAULT_REFERER;
   const requestCheck: RequestCheck = {
     hasOC: Boolean(oc),
     hasTarget: true,
@@ -220,7 +233,7 @@ export async function GET(request: Request) {
       withDebug(
         {
           ok: false,
-          error: "검색어가 없습니다.",
+          error: "\uAC80\uC0C9\uC5B4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
         },
         debug,
         baseDebugInfo,
@@ -234,7 +247,7 @@ export async function GET(request: Request) {
       withDebug(
         {
           ok: false,
-          error: "LAW_OPEN_API_OC 환경변수가 설정되지 않았습니다.",
+          error: "LAW_OPEN_API_OC \uD658\uACBD\uBCC0\uC218\uAC00 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
         },
         debug,
         baseDebugInfo,
@@ -257,6 +270,8 @@ export async function GET(request: Request) {
       headers: {
         "User-Agent": userAgent,
         Accept: "application/json,text/plain,*/*",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        Referer: referer,
       },
       cache: "no-store",
     });
@@ -277,7 +292,7 @@ export async function GET(request: Request) {
             ok: false,
             keyword,
             items: [],
-            error: "공식 법령 후보를 불러오지 못했습니다.",
+            error: "\uACF5\uC2DD \uBC95\uB839 \uD6C4\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
           },
           debug,
           debugInfo,
@@ -293,7 +308,7 @@ export async function GET(request: Request) {
             ok: false,
             keyword,
             items: [],
-            error: "공식 법령 후보를 불러오지 못했습니다.",
+            error: "\uACF5\uC2DD \uBC95\uB839 \uD6C4\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
           },
           debug,
           debugInfo,
@@ -313,7 +328,27 @@ export async function GET(request: Request) {
             ok: false,
             keyword,
             items: [],
-            error: "공식 법령 후보를 불러오지 못했습니다.",
+            error: "\uACF5\uC2DD \uBC95\uB839 \uD6C4\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+          },
+          debug,
+          debugInfo,
+        ),
+        { status: 502 },
+      );
+    }
+
+    const parsedRecord = asRecord(parsed);
+    const upstreamResult = getString(parsedRecord ?? {}, ["result", KOREAN_KEYS.result]);
+    const upstreamMessage = getString(parsedRecord ?? {}, ["msg", "message", "error", KOREAN_KEYS.message]);
+
+    if (upstreamResult && upstreamResult !== "success" && extractItems(parsed).length === 0) {
+      return NextResponse.json(
+        withDebug(
+          {
+            ok: false,
+            keyword,
+            items: [],
+            error: upstreamMessage || "\uACF5\uC2DD \uBC95\uB839 \uD6C4\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
           },
           debug,
           debugInfo,
@@ -342,7 +377,7 @@ export async function GET(request: Request) {
           ok: false,
           keyword,
           items: [],
-          error: "공식 법령 후보를 불러오지 못했습니다.",
+          error: "\uACF5\uC2DD \uBC95\uB839 \uD6C4\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
         },
         debug,
         baseDebugInfo,
