@@ -52,12 +52,9 @@ export default function ChecklistDetailCard({
             <p className="max-w-3xl text-sm leading-7 text-slate-600">{item.description}</p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            {item.quickChecks.map((check) => (
-              <div key={check} className="section-frame px-4 py-3">
-                <p className="text-sm leading-6 text-slate-700">{check}</p>
-              </div>
-            ))}
+          <div className="section-frame px-4 py-4">
+            <p className="eyebrow-number">Applied Reason</p>
+            <p className="mt-2 text-sm leading-7 text-slate-700">{item.appliedReason}</p>
           </div>
         </div>
 
@@ -74,12 +71,6 @@ export default function ChecklistDetailCard({
         <div className="mt-6 grid gap-5 border-t muted-divider pt-6">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="section-frame p-5">
-              <p className="eyebrow-number">Why</p>
-              <h4 className="mt-2 text-base font-semibold text-slate-900">이 항목이 나온 이유</h4>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{item.reason}</p>
-            </div>
-
-            <div className="section-frame p-5">
               <p className="eyebrow-number">Laws</p>
               <h4 className="mt-2 text-base font-semibold text-slate-900">관련 법령명</h4>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -89,6 +80,21 @@ export default function ChecklistDetailCard({
                     className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
                   >
                     {law}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="section-frame p-5">
+              <p className="eyebrow-number">Official</p>
+              <h4 className="mt-2 text-base font-semibold text-slate-900">공식 확인처</h4>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {item.officialSources.map((source) => (
+                  <span
+                    key={source}
+                    className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                  >
+                    {source}
                   </span>
                 ))}
               </div>

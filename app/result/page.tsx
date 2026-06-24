@@ -2,6 +2,7 @@ import Link from "next/link";
 import ChecklistDetailCard from "./checklist-detail-card";
 import PromptCopySection from "./prompt-copy-section";
 import {
+  buildProjectReviewSummary,
   generateChecklist,
   parseProjectInfo,
   summarizeChecklist,
@@ -173,6 +174,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
   const checklist = generateChecklist(projectInfo);
   const summary = summarizeChecklist(checklist);
   const promptText = buildPromptText(projectInfo, checklist);
+  const reviewSummaryText = buildProjectReviewSummary(projectInfo);
 
   const requiredItems = checklist.filter((item) => item.category === "필수 검토");
   const conditionalItems = checklist.filter((item) => item.category === "조건부 검토");
@@ -193,6 +195,9 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
                   아래 결과는 법적 확정 판단이 아니라, 초기 설계 단계에서 먼저
                   살펴보면 좋은 검토 순서를 정리한 것입니다.
                 </p>
+                <div className="section-frame px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">{reviewSummaryText}</p>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
