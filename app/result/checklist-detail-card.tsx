@@ -3,30 +3,55 @@
 import { useState } from "react";
 import { getResultCategory, type ChecklistIssue } from "@/src/lib/checklistCards";
 
-const categoryStyles: Record<
+const priorityStyles: Record<
   ChecklistIssue["priority"],
   {
     label: string;
     badgeClass: string;
-    borderClass: string;
+    accentClass: string;
   }
 > = {
   "필수 검토": {
     label: "필수 검토",
-    badgeClass: "bg-brand-50 text-brand-700 border-blue-100",
-    borderClass: "border-l-[3px] border-l-brand-700",
+    badgeClass: "border-blue-200 bg-blue-50 text-blue-700",
+    accentClass: "border-l-blue-600",
   },
   "놓치기 쉬운 항목": {
     label: "놓치기 쉬운 항목",
-    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    borderClass: "border-l-[3px] border-l-slate-500",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
+    accentClass: "border-l-slate-500",
   },
   "추가 확인 필요": {
     label: "추가 확인 필요",
-    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    borderClass: "border-l-[3px] border-l-slate-400",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
+    accentClass: "border-l-slate-400",
   },
 };
+
+function CompactList({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</p>
+      <ul className="grid gap-1.5 text-sm leading-6 text-slate-600">
+        {items.map((item) => (
+          <li key={item} className="rounded-[12px] bg-slate-50 px-3 py-2">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function ChecklistDetailCard({
   item,
@@ -34,148 +59,60 @@ export default function ChecklistDetailCard({
   item: ChecklistIssue;
 }) {
   const [open, setOpen] = useState(false);
-  const categoryStyle = categoryStyles[item.priority];
-  const resultCategory = getResultCategory(item.issueType);
+  const priorityStyle = priorityStyles[item.priority];
+  const category = getResultCategory(item.issueType);
 
   return (
-    <article className={`surface-card p-6 md:p-7 ${categoryStyle.borderClass}`}>
-      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-5">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${categoryStyle.badgeClass}`}
-              >
-                {categoryStyle.label}
-              </span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                {resultCategory}
-              </span>
-            </div>
-            <h3 className="text-[22px] font-semibold tracking-[-0.03em] text-slate-900">
-              {item.title}
-            </h3>
-            <p className="max-w-3xl text-sm leading-7 text-slate-600">{item.plainDescription}</p>
+    <article
+      className={`rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)] md:p-5 ${priorityStyle.accentClass} border-l-[3px]`}
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${priorityStyle.badgeClass}`}
+            >
+              {priorityStyle.label}
+            </span>
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+              {category}
+            </span>
           </div>
 
-          <div className="section-frame px-4 py-4">
-            <p className="eyebrow-number">왜 표시되었는지</p>
-            <p className="mt-2 text-sm leading-7 text-slate-700">{item.triggerReason}</p>
+          <div className="space-y-1.5">
+            <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-slate-950">
+              {item.title}
+            </h3>
+            <p className="text-sm leading-6 text-slate-600">{item.plainDescription}</p>
+          </div>
+
+          <div className="rounded-[14px] border border-slate-200 bg-slate-50/80 px-3 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              왜 표시되었는지
+            </p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-700">{item.triggerReason}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="ghost-button shrink-0"
+          className="ghost-button shrink-0 px-3 py-2 text-sm"
         >
           {open ? "자세히 닫기" : "자세히 보기"}
         </button>
       </div>
 
       {open ? (
-        <div className="mt-6 grid gap-5 border-t muted-divider pt-6">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div className="section-frame p-5">
-              <p className="eyebrow-number">법규 분야</p>
-              <h4 className="mt-2 text-base font-semibold text-slate-900">관련 법규 분야</h4>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {item.legalDomains.map((domain) => (
-                  <span
-                    key={domain}
-                    className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                  >
-                    {domain}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="section-frame p-5">
-              <p className="eyebrow-number">법령 후보</p>
-              <h4 className="mt-2 text-base font-semibold text-slate-900">관련 가능성이 있는 법령</h4>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {item.candidateLaws.map((law) => (
-                  <span
-                    key={law}
-                    className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                  >
-                    {law}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <div className="section-frame p-5">
-              <p className="eyebrow-number">확인 내용</p>
-              <h4 className="mt-2 text-base font-semibold text-slate-900">확인해야 할 내용</h4>
-              <ul className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
-                {item.checkPoints.map((checkPoint) => (
-                  <li
-                    key={checkPoint}
-                    className="border-t border-[rgba(26,32,37,0.08)] pt-2 first:border-t-0 first:pt-0"
-                  >
-                    {checkPoint}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="grid gap-5">
-              <div className="section-frame p-5">
-                <p className="eyebrow-number">추가 정보</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">
-                  더 정확한 검토를 위해 필요한 정보
-                </h4>
-                <ul className="mt-3 grid gap-2 text-sm leading-7 text-slate-600">
-                  {item.requiredInputs.map((requiredInput) => (
-                    <li
-                      key={requiredInput}
-                      className="border-t border-[rgba(26,32,37,0.08)] pt-2 first:border-t-0 first:pt-0"
-                    >
-                      {requiredInput}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="section-frame p-5">
-                <p className="eyebrow-number">검색 키워드</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">공식 사이트 검색 키워드</h4>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.searchKeywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="section-frame p-5">
-                <p className="eyebrow-number">확인처</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">공식 확인처</h4>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.officialSources.map((source) => (
-                    <span
-                      key={source}
-                      className="inline-flex items-center border border-[rgba(26,32,37,0.12)] bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border border-amber-300 bg-amber-50 px-5 py-4">
-                <p className="eyebrow-number text-amber-700">주의 문구</p>
-                <p className="mt-2 text-sm leading-7 text-amber-900">{item.caution}</p>
-              </div>
-            </div>
+        <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4">
+          <CompactList title="확인할 내용" items={item.checkPoints} />
+          <CompactList title="관련 가능 법령" items={item.candidateLaws} />
+          <CompactList title="검색 키워드" items={item.searchKeywords} />
+          <div className="rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+              주의 문구
+            </p>
+            <p className="mt-1.5 text-sm leading-6 text-amber-900">{item.caution}</p>
           </div>
         </div>
       ) : null}

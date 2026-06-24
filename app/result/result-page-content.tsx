@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ChecklistDetailCard from "./checklist-detail-card";
-import PromptCopySection from "./prompt-copy-section";
 import {
   getResultCategory,
   type ChecklistIssue,
@@ -41,65 +40,68 @@ const filterOptions: FilterValue[] = [
 ];
 
 const sectionLinks = [
-  { id: "result-summary", label: "전체 요약" },
   { id: "required-checks", label: "필수 검토" },
   { id: "risk-checks", label: "놓치기 쉬운 항목" },
-  { id: "additional-checks", label: "추가 확인 필요" },
-  { id: "official-keywords", label: "공식 확인 키워드" },
-  { id: "input-summary", label: "입력값 요약" },
+  { id: "additional-checks", label: "추가 확인" },
+  { id: "official-keywords", label: "검색 키워드" },
 ] as const;
 
-function ProjectInfoRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="section-frame px-4 py-4">
-      <dt className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</dt>
-      <dd className="mt-2 text-base font-medium text-slate-900">{value}</dd>
-    </div>
-  );
+function scrollToId(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function SummaryStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "brand" | "neutral" | "olive" | "total";
-}) {
-  const toneClass =
-    tone === "brand"
-      ? "bg-brand-50/80 border-blue-100"
-      : tone === "olive"
-        ? "bg-slate-50 border-slate-200"
-        : tone === "total"
-          ? "bg-white border-slate-200"
-          : "bg-white/90 border-slate-200";
+function formatValue(value: string, suffix?: string) {
+  if (!suffix || value === "확인 필요") {
+    return value;
+  }
 
-  return (
-    <div className={`surface-card p-5 ${toneClass}`}>
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-900">{value}</p>
-    </div>
-  );
+  return `${value}${suffix}`;
+}
+
+function buildConditionSummary(projectInfo: ProjectInfo) {
+  return [
+    projectInfo.buildingUse,
+    projectInfo.constructionAction,
+    projectInfo.publicPrivate,
+    projectInfo.districtUnitPlan === "예"
+      ? "지구단위계획구역"
+      : projectInfo.districtUnitPlan === "잘 모르겠음"
+        ? "지구단위계획 확인 필요"
+        : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function buildFullResultText(reviewSummaryText: string, checklist: ChecklistIssue[]) {
+  return [
+    "[검토 결과]",
+    reviewSummaryText,
+    "",
+    ...checklist.map((item, index) =>
+      [
+        `${index + 1}. ${item.title}`,
+        `- 우선순위: ${item.priority}`,
+        `- 카테고리: ${getResultCategory(item.issueType)}`,
+        `- 왜 표시되었는지: ${item.triggerReason}`,
+        `- 쉬운 설명: ${item.plainDescription}`,
+        `- 확인할 내용: ${item.checkPoints.join(", ")}`,
+        `- 관련 가능 법령: ${item.candidateLaws.join(", ")}`,
+        `- 검색 키워드: ${item.searchKeywords.join(", ")}`,
+        `- 주의 문구: ${item.caution}`,
+      ].join("\n"),
+    ),
+  ].join("\n\n");
 }
 
 function CategorySection({
   id,
   title,
-  description,
   count,
   items,
 }: {
   id: string;
   title: string;
-  description: string;
   count: number;
   items: ChecklistIssue[];
 }) {
@@ -108,52 +110,18 @@ function CategorySection({
   }
 
   return (
-    <section id={id} className="scroll-mt-24 grid gap-5">
-      <div className="flex flex-col gap-3 border-b muted-divider pb-4 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-2">
-          <h2 className="section-title">{title}</h2>
-          <p className="text-sm leading-7 text-slate-600">{description}</p>
-        </div>
-        <p className="text-sm font-medium text-slate-500">{count}개 항목</p>
+    <section id={id} className="scroll-mt-24 space-y-4">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">{title}</h2>
+        <span className="text-xs font-medium text-slate-500">{count}개</span>
       </div>
-      <div className="grid gap-5">
+      <div className="grid gap-3">
         {items.map((item) => (
           <ChecklistDetailCard key={item.id} item={item} />
         ))}
       </div>
     </section>
   );
-}
-
-function formatWithUnit(value: string, unit: string) {
-  return value === "확인 필요" ? value : `${value}${unit}`;
-}
-
-function scrollToId(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function buildFullResultText(reviewSummaryText: string, checklist: ChecklistIssue[]) {
-  return [
-    "[검토 결과 요약]",
-    reviewSummaryText,
-    "",
-    ...checklist.map((item, index) =>
-      [
-        `${index + 1}. ${item.title}`,
-        `- 우선순위: ${item.priority}`,
-        `- 카테고리: ${getResultCategory(item.issueType)}`,
-        `- 쉬운 설명: ${item.plainDescription}`,
-        `- 왜 표시되었는지: ${item.triggerReason}`,
-        `- 확인해야 할 내용: ${item.checkPoints.join(", ")}`,
-        `- 관련 가능 법령: ${item.candidateLaws.join(", ")}`,
-        `- 공식 확인처: ${item.officialSources.join(", ")}`,
-        `- 검색 키워드: ${item.searchKeywords.join(", ")}`,
-        `- 더 정확한 검토를 위해 필요한 정보: ${item.requiredInputs.join(", ")}`,
-        `- 주의 문구: ${item.caution}`,
-      ].join("\n"),
-    ),
-  ].join("\n\n");
 }
 
 export default function ResultPageContent({
@@ -192,7 +160,7 @@ export default function ResultPageContent({
     [filteredChecklist],
   );
 
-  const totalCount = checklist.length;
+  const conditionSummary = buildConditionSummary(projectInfo);
 
   const handleCopy = async (mode: "all" | "keywords" | "prompt", text: string) => {
     try {
@@ -204,176 +172,143 @@ export default function ResultPageContent({
   };
 
   return (
-    <main className="min-h-screen px-5 py-5 text-slate-900 md:px-8 md:py-8">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
-        <section id="result-summary" className="surface-card overflow-hidden p-6 md:p-8">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_360px]">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <p className="section-kicker">Review Output</p>
-                <h1 className="font-editorial text-4xl font-bold text-slate-900 md:text-5xl">
-                  프로젝트 검토 결과
-                </h1>
-                <p className="max-w-3xl text-base leading-8 text-slate-600">
-                  아래 결과는 법적 확정 판단이 아니라, 초기 설계 단계에서 먼저 살펴보면 좋은 검토 순서를 정리한 것입니다.
-                </p>
-                <div className="section-frame px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-900">{reviewSummaryText}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleCopy("all", buildFullResultText(reviewSummaryText, filteredChecklist))}
-                  className="solid-button"
-                >
-                  결과 전체 복사
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCopy("keywords", uniqueKeywords.join("\n"))}
-                  className="ghost-button"
-                >
-                  검색 키워드 전체 복사
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCopy("prompt", promptText)}
-                  className="ghost-button"
-                >
-                  AI 요약용 프롬프트 복사
-                </button>
-              </div>
-
-              <p className="helper-text">
-                {copyState === "all" && "현재 보이는 결과 항목을 모두 복사했습니다."}
-                {copyState === "keywords" && "현재 보이는 검색 키워드를 모두 복사했습니다."}
-                {copyState === "prompt" && "AI 요약용 프롬프트를 복사했습니다."}
-                {copyState === "failed" && "브라우저에서 복사를 허용하지 않아 복사에 실패했습니다."}
-                {copyState === "idle" && "결과 전체, 검색 키워드, AI 요약용 프롬프트를 각각 복사할 수 있습니다."}
-              </p>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <SummaryStat label="전체 검토 항목" value={totalCount} tone="total" />
-                <SummaryStat label="필수 검토" value={summary["필수 검토"]} tone="brand" />
-                <SummaryStat
-                  label="놓치기 쉬운 항목"
-                  value={summary["놓치기 쉬운 항목"]}
-                  tone="neutral"
-                />
-                <SummaryStat
-                  label="추가 확인 필요"
-                  value={summary["추가 확인 필요"]}
-                  tone="olive"
-                />
-              </div>
-
-              <div className="section-frame px-4 py-4">
-                <p className="text-sm font-medium text-slate-700">
-                  검토 결과 요약
-                </p>
-                <p className="mt-2 text-sm leading-7 text-slate-600">
-                  필수 검토 {summary["필수 검토"]}개 / 놓치기 쉬운 항목 {summary["놓치기 쉬운 항목"]}개 / 추가 확인 {summary["추가 확인 필요"]}개
-                </p>
-                {filter !== "전체" ? (
-                  <p className="mt-2 text-xs font-medium text-blue-700">
-                    현재 카테고리 필터: {filter}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            <aside id="input-summary" className="hairline-grid section-frame flex flex-col justify-between gap-6 p-5">
-              <div className="space-y-3">
-                <p className="eyebrow-number">입력값 요약</p>
-                <h2 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
-                  입력값 기반 요약
-                </h2>
-                <p className="text-sm leading-7 text-slate-600">
-                  현재 검토 결과는 아래 입력값을 바탕으로 정리되었습니다.
-                </p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-                <ProjectInfoRow label="대지 위치" value={projectInfo.location} />
-                <ProjectInfoRow label="지역 / 지자체" value={projectInfo.municipality} />
-                <ProjectInfoRow label="건축물 용도" value={projectInfo.buildingUse} />
-                <ProjectInfoRow label="건축 행위" value={projectInfo.constructionAction} />
-                <ProjectInfoRow label="대지면적" value={formatWithUnit(projectInfo.siteArea, "㎡")} />
-                <ProjectInfoRow label="연면적" value={formatWithUnit(projectInfo.totalFloorArea, "㎡")} />
-                <ProjectInfoRow
-                  label="지상 / 지하"
-                  value={`${formatWithUnit(projectInfo.aboveGroundFloors, "층")} / ${formatWithUnit(projectInfo.basementFloors, "층")}`}
-                />
-                <ProjectInfoRow label="높이" value={formatWithUnit(projectInfo.buildingHeight, "m")} />
-                <ProjectInfoRow label="공공 / 민간" value={projectInfo.publicPrivate} />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/" className="ghost-button">
-                  입력 화면으로 돌아가기
-                </Link>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        <section className="surface-card p-5 md:p-6">
+    <main className="min-h-screen px-4 py-5 text-slate-900 md:px-6 md:py-7">
+      <div className="mx-auto flex max-w-[1320px] flex-col gap-5">
+        <section id="result-summary" className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="section-kicker">Filter</p>
-              <h2 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
-                카테고리별 보기
-              </h2>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+                  Review Result
+                </p>
+                <h1 className="text-[30px] font-bold tracking-[-0.04em] text-slate-950 md:text-[36px]">
+                  검토 결과
+                </h1>
+                <p className="text-sm leading-6 text-slate-600">{reviewSummaryText}</p>
+              </div>
+
+              <Link href="/" className="ghost-button shrink-0">
+                입력 화면으로 돌아가기
+              </Link>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {filterOptions.map((option) => {
-                const active = filter === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setFilter(option)}
-                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                      active
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                );
-              })}
+
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+                필수 {summary["필수 검토"]}개
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-700">
+                놓치기 쉬운 항목 {summary["놓치기 쉬운 항목"]}개
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-700">
+                추가 확인 {summary["추가 확인 필요"]}개
+              </span>
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopy("all", buildFullResultText(reviewSummaryText, filteredChecklist))}
+                className="solid-button px-4 py-2.5 text-sm"
+              >
+                결과 전체 복사
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCopy("keywords", uniqueKeywords.join("\n"))}
+                className="ghost-button px-4 py-2.5 text-sm"
+              >
+                검색 키워드 전체 복사
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCopy("prompt", promptText)}
+                className="ghost-button px-4 py-2.5 text-sm"
+              >
+                AI 요약용 프롬프트 복사
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              {copyState === "all" && "현재 보이는 결과 항목을 모두 복사했습니다."}
+              {copyState === "keywords" && "현재 보이는 검색 키워드를 모두 복사했습니다."}
+              {copyState === "prompt" && "AI 요약용 프롬프트를 복사했습니다."}
+              {copyState === "failed" && "브라우저에서 복사를 허용하지 않아 복사에 실패했습니다."}
+              {copyState === "idle" &&
+                "결과 전체, 검색 키워드, AI 요약용 프롬프트를 각각 복사할 수 있습니다."}
+            </p>
+
+            <details className="rounded-[16px] border border-slate-200 bg-slate-50/80 px-4 py-3">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-800">
+                검토 조건 보기
+              </summary>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-600">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  {conditionSummary}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  대지 위치 {projectInfo.location}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  지역/지자체 {projectInfo.municipality}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  대지면적 {formatValue(projectInfo.siteArea, "㎡")}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  연면적 {formatValue(projectInfo.totalFloorArea, "㎡")}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  층수 {formatValue(projectInfo.aboveGroundFloors, "층")} / 지하{" "}
+                  {formatValue(projectInfo.basementFloors, "층")}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                  높이 {formatValue(projectInfo.buildingHeight, "m")}
+                </span>
+              </div>
+            </details>
           </div>
         </section>
 
         <div className="xl:hidden">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {[
-              ["전체 요약", "result-summary"],
-              ["필수", "required-checks"],
-              ["놓치기 쉬운 항목", "risk-checks"],
-              ["추가 확인", "additional-checks"],
-              ["검색 키워드", "official-keywords"],
-            ].map(([label, id]) => (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {sectionLinks.map((link) => (
               <button
-                key={id}
+                key={link.id}
                 type="button"
-                onClick={() => scrollToId(id)}
-                className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-blue-700"
+                onClick={() => scrollToId(link.id)}
+                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-blue-700"
               >
-                {label}
+                {link.label}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_180px]">
-          <div className="space-y-8">
+        <div className="flex flex-wrap gap-2">
+          {filterOptions.map((option) => {
+            const active = filter === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setFilter(option)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_176px]">
+          <div className="space-y-6">
             <CategorySection
               id="required-checks"
               title="필수 검토"
-              description="허가 가능성, 규모 계획, 안전 기준처럼 초기에 먼저 방향을 잡아야 하는 항목입니다."
               count={requiredItems.length}
               items={requiredItems}
             />
@@ -381,7 +316,6 @@ export default function ResultPageContent({
             <CategorySection
               id="risk-checks"
               title="놓치기 쉬운 항목"
-              description="조건에 따라 적용되며, 초기에 놓치면 평면이나 절차를 다시 조정하게 만들 수 있는 항목입니다."
               count={riskItems.length}
               items={riskItems}
             />
@@ -389,32 +323,35 @@ export default function ResultPageContent({
             <CategorySection
               id="additional-checks"
               title="추가 확인 필요"
-              description="법규 검토를 더 정밀하게 만들기 위해 함께 확인하면 좋은 보완 검토입니다."
               count={additionalItems.length}
               items={additionalItems}
             />
 
-            <section id="official-keywords" className="scroll-mt-24 surface-card p-5 md:p-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="section-kicker">Keywords</p>
-                  <h2 className="section-title">공식 확인 키워드</h2>
-                  <p className="text-sm leading-7 text-slate-600">
-                    현재 보이는 결과 카드에서 공식 사이트 확인용 키워드만 모아두었습니다.
+            <section
+              id="official-keywords"
+              className="scroll-mt-24 rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)] md:p-5"
+            >
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+                    검색 키워드 모음
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    현재 보이는 결과 카드에서 공식 확인에 활용할 키워드를 모았습니다.
                   </p>
                 </div>
 
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                   {uniqueKeywords.map((keyword) => (
                     <div
                       key={keyword}
-                      className="section-frame flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-2 rounded-[16px] border border-slate-200 bg-slate-50/70 px-3 py-3 md:flex-row md:items-center md:justify-between"
                     >
-                      <p className="text-sm leading-7 text-slate-700">{keyword}</p>
+                      <p className="text-sm text-slate-700">{keyword}</p>
                       <button
                         type="button"
                         onClick={() => handleCopy("keywords", keyword)}
-                        className="ghost-button shrink-0 px-4 py-2"
+                        className="ghost-button shrink-0 px-3 py-2 text-sm"
                       >
                         복사
                       </button>
@@ -423,29 +360,22 @@ export default function ResultPageContent({
                 </div>
               </div>
             </section>
-
-            <PromptCopySection promptText={promptText} />
           </div>
 
           <aside className="hidden xl:block">
             <div className="sticky top-6">
-              <div className="rounded-[18px] border border-slate-200 bg-white p-3 shadow-panel">
-                <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  바로가기
-                </p>
-                <div className="grid gap-1.5">
-                  {sectionLinks.map((link) => (
-                    <button
-                      key={link.id}
-                      type="button"
-                      onClick={() => scrollToId(link.id)}
-                      className="rounded-[12px] border border-transparent px-3 py-2 text-left text-[13px] font-medium text-slate-600 transition hover:border-slate-200 hover:bg-slate-50 hover:text-blue-700"
-                    >
-                      {link.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <nav className="space-y-1 border-l border-slate-200 pl-4">
+                {sectionLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    type="button"
+                    onClick={() => scrollToId(link.id)}
+                    className="block w-full py-1 text-left text-sm text-slate-500 transition hover:text-blue-700"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </nav>
             </div>
           </aside>
         </div>
