@@ -250,7 +250,7 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
           </div>
         </section>
 
-        <PromptCopySection compact promptText={promptText} />
+        <PromptCopySection promptText={promptText} />
 
         <CategorySection
           title="필수 검토"

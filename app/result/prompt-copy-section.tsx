@@ -3,14 +3,10 @@
 import { useState } from "react";
 
 type Props = {
-  compact?: boolean;
   promptText: string;
 };
 
-export default function PromptCopySection({
-  compact = false,
-  promptText,
-}: Props) {
+export default function PromptCopySection({ promptText }: Props) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [showPreview, setShowPreview] = useState(false);
 
@@ -24,7 +20,7 @@ export default function PromptCopySection({
   };
 
   return (
-    <section className={`surface-card ${compact ? "p-5 md:p-6" : "p-6 md:p-8"}`}>
+    <section className="surface-card p-5 md:p-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">
         <div className="space-y-4">
           <p className="section-kicker">AI Follow-up</p>
