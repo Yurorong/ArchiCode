@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
 const LAW_SEARCH_URL = "https://www.law.go.kr/DRF/lawSearch.do";
-const DISPLAY_LIMIT = 5;
+const DISPLAY_LIMIT = "5";
 const RAW_TEXT_PREVIEW_LIMIT = 500;
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (compatible; ArchiCodeKR/1.0; +https://archi-code-kappa.vercel.app/)";
 
 type LawSearchItem = {
   lawName: string;
@@ -15,28 +17,25 @@ type LawSearchItem = {
   detailLink: string;
 };
 
+type RequestCheck = {
+  hasOC: boolean;
+  hasTarget: boolean;
+  target: string;
+  hasType: boolean;
+  type: string;
+  hasQuery: boolean;
+  query: string;
+  display: string;
+};
+
 type DebugInfo = {
   hasOc: boolean;
   ocLength: number;
-  ocPreview: string;
-  upstreamUrlWithoutOC: string;
+  requestCheck: RequestCheck;
   upstreamStatus: number | null;
   upstreamContentType: string;
   rawTextPreview: string;
-  parsedTopLevelKeys: string[];
-  detectedResultPath: string;
-  itemCountBeforeNormalize: number;
-  itemCountAfterNormalize: number;
-  requestCheck: {
-    hasOC: boolean;
-    hasTarget: boolean;
-    target: string;
-    hasType: boolean;
-    type: string;
-    hasQuery: boolean;
-    query: string;
-    display: string;
-  };
+  userAgentApplied: true;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -45,6 +44,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   }
 
   return value as Record<string, unknown>;
+}
+
+function toArray<T>(value: T | T[] | null | undefined) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (value == null) {
+    return [];
+  }
+
+  return [value];
 }
 
 function getString(record: Record<string, unknown>, keys: string[]) {
@@ -61,18 +72,6 @@ function getString(record: Record<string, unknown>, keys: string[]) {
   }
 
   return "";
-}
-
-function toArray<T>(value: T | T[] | null | undefined) {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (value == null) {
-    return [];
-  }
-
-  return [value];
 }
 
 function looksLikeHtml(rawText: string) {
@@ -125,33 +124,6 @@ function normalizeLawItem(record: Record<string, unknown>): LawSearchItem | null
   };
 }
 
-function extractDirectCandidates(payloadRecord: Record<string, unknown> | null) {
-  const lawSearchRecord = asRecord(payloadRecord?.LawSearch);
-  const directPaths = [
-    { path: "data.LawSearch.law", value: lawSearchRecord?.law },
-    { path: "data.law", value: payloadRecord?.law },
-    { path: "data.LawSearch", value: payloadRecord?.LawSearch },
-  ];
-
-  for (const candidate of directPaths) {
-    const values = toArray(candidate.value)
-      .map((item) => asRecord(item))
-      .filter((item): item is Record<string, unknown> => item !== null);
-
-    if (values.length > 0) {
-      return {
-        detectedResultPath: candidate.path,
-        records: values,
-      };
-    }
-  }
-
-  return {
-    detectedResultPath: "unmatched",
-    records: [] as Record<string, unknown>[],
-  };
-}
-
 function collectLawItems(value: unknown): Record<string, unknown>[] {
   if (Array.isArray(value)) {
     return value.flatMap((item) => collectLawItems(item));
@@ -174,19 +146,25 @@ function collectLawItems(value: unknown): Record<string, unknown>[] {
 
 function extractItems(payload: unknown) {
   const payloadRecord = asRecord(payload);
-  const direct = extractDirectCandidates(payloadRecord);
-  const fallbackRecords =
-    direct.records.length > 0 ? direct.records : collectLawItems(payload);
-  const detectedResultPath =
-    direct.records.length > 0
-      ? direct.detectedResultPath
-      : fallbackRecords.length > 0
-        ? "recursive-scan"
-        : "unmatched";
-  const normalizedItems = fallbackRecords
+  const lawSearchRecord = asRecord(payloadRecord?.LawSearch);
+  const directCandidates = [
+    lawSearchRecord?.law,
+    payloadRecord?.law,
+    payloadRecord?.LawSearch,
+  ];
+
+  const directRecords = directCandidates.flatMap((candidate) =>
+    toArray(candidate)
+      .map((item) => asRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== null),
+  );
+
+  const sourceRecords = directRecords.length > 0 ? directRecords : collectLawItems(payload);
+  const normalizedItems = sourceRecords
     .map((record) => normalizeLawItem(record))
     .filter((item): item is LawSearchItem => item !== null);
-  const dedupedItems = Array.from(
+
+  return Array.from(
     new Map(
       normalizedItems.map((item) => [
         `${item.lawName}::${item.lawId}::${item.mst}::${item.detailLink}`,
@@ -194,37 +172,6 @@ function extractItems(payload: unknown) {
       ]),
     ).values(),
   );
-
-  return {
-    detectedResultPath,
-    itemCountBeforeNormalize: fallbackRecords.length,
-    itemCountAfterNormalize: dedupedItems.length,
-    items: dedupedItems,
-  };
-}
-
-function buildMaskedUpstreamUrl(keyword: string) {
-  const params = new URLSearchParams({
-    OC: "***",
-    target: "law",
-    type: "JSON",
-    query: keyword,
-    display: String(DISPLAY_LIMIT),
-  });
-
-  return `${LAW_SEARCH_URL}?${params.toString()}`;
-}
-
-function buildOcPreview(oc: string) {
-  if (!oc) {
-    return "";
-  }
-
-  if (oc.length <= 4) {
-    return `${oc.slice(0, 1)}***${oc.slice(-1)}`;
-  }
-
-  return `${oc.slice(0, 2)}***${oc.slice(-2)}`;
 }
 
 function withDebug(
@@ -246,30 +193,26 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get("keyword")?.trim() ?? "";
   const debug = searchParams.get("debug") === "1";
-  const upstreamUrlWithoutOC = buildMaskedUpstreamUrl(keyword);
-  const emptyRequestCheck = {
-    hasOC: false,
+  const oc = process.env.LAW_OPEN_API_OC?.trim();
+  const userAgent = process.env.LAW_USER_AGENT?.trim() || DEFAULT_USER_AGENT;
+  const requestCheck: RequestCheck = {
+    hasOC: Boolean(oc),
     hasTarget: true,
     target: "law",
     hasType: true,
     type: "JSON",
     hasQuery: Boolean(keyword),
     query: keyword,
-    display: String(DISPLAY_LIMIT),
+    display: DISPLAY_LIMIT,
   };
   const baseDebugInfo: DebugInfo = {
-    hasOc: false,
-    ocLength: 0,
-    ocPreview: "",
-    upstreamUrlWithoutOC,
+    hasOc: Boolean(oc),
+    ocLength: oc?.length ?? 0,
+    requestCheck,
     upstreamStatus: null,
     upstreamContentType: "",
     rawTextPreview: "",
-    parsedTopLevelKeys: [],
-    detectedResultPath: "not-requested",
-    itemCountBeforeNormalize: 0,
-    itemCountAfterNormalize: 0,
-    requestCheck: emptyRequestCheck,
+    userAgentApplied: true,
   };
 
   if (!keyword) {
@@ -286,24 +229,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const oc = process.env.LAW_OPEN_API_OC?.trim();
-  const debugInfoWithOc: DebugInfo = {
-    ...baseDebugInfo,
-    hasOc: Boolean(oc),
-    ocLength: oc?.length ?? 0,
-    ocPreview: oc ? buildOcPreview(oc) : "",
-    requestCheck: {
-      hasOC: Boolean(oc),
-      hasTarget: true,
-      target: "law",
-      hasType: true,
-      type: "JSON",
-      hasQuery: Boolean(keyword),
-      query: keyword,
-      display: String(DISPLAY_LIMIT),
-    },
-  };
-
   if (!oc) {
     return NextResponse.json(
       withDebug(
@@ -312,7 +237,7 @@ export async function GET(request: Request) {
           error: "LAW_OPEN_API_OC 환경변수가 설정되지 않았습니다.",
         },
         debug,
-        debugInfoWithOc,
+        baseDebugInfo,
       ),
       { status: 500 },
     );
@@ -323,22 +248,27 @@ export async function GET(request: Request) {
     target: "law",
     type: "JSON",
     query: keyword,
-    display: String(DISPLAY_LIMIT),
+    display: DISPLAY_LIMIT,
   });
-  const requestUrl = `${LAW_SEARCH_URL}?${params.toString()}`;
+  const url = `${LAW_SEARCH_URL}?${params.toString()}`;
 
   try {
-    const response = await fetch(requestUrl, {
-      cache: "no-store",
+    const response = await fetch(url, {
       headers: {
-        Accept: "application/json, text/plain, */*",
+        "User-Agent": userAgent,
+        Accept: "application/json,text/plain,*/*",
       },
+      cache: "no-store",
     });
 
     const rawText = await response.text();
-    const upstreamStatus = response.status;
-    const upstreamContentType = response.headers.get("content-type") ?? "";
-    const rawTextPreview = rawText.slice(0, RAW_TEXT_PREVIEW_LIMIT);
+    const debugInfo: DebugInfo = {
+      ...baseDebugInfo,
+      upstreamStatus: response.status,
+      upstreamContentType: response.headers.get("content-type") ?? "",
+      rawTextPreview: rawText.slice(0, RAW_TEXT_PREVIEW_LIMIT),
+      userAgentApplied: true,
+    };
 
     if (!response.ok) {
       return NextResponse.json(
@@ -348,21 +278,15 @@ export async function GET(request: Request) {
             keyword,
             items: [],
             error: "공식 법령 후보를 불러오지 못했습니다.",
-            reason: "upstream-http-error",
           },
           debug,
-          {
-            ...debugInfoWithOc,
-            upstreamStatus,
-            upstreamContentType,
-            rawTextPreview,
-          },
+          debugInfo,
         ),
         { status: 502 },
       );
     }
 
-    if (looksLikeHtml(rawText)) {
+    if (looksLikeHtml(rawText) || looksLikeXml(rawText)) {
       return NextResponse.json(
         withDebug(
           {
@@ -370,37 +294,9 @@ export async function GET(request: Request) {
             keyword,
             items: [],
             error: "공식 법령 후보를 불러오지 못했습니다.",
-            reason: "upstream-html-response",
           },
           debug,
-          {
-            ...debugInfoWithOc,
-            upstreamStatus,
-            upstreamContentType,
-            rawTextPreview,
-          },
-        ),
-        { status: 502 },
-      );
-    }
-
-    if (looksLikeXml(rawText)) {
-      return NextResponse.json(
-        withDebug(
-          {
-            ok: false,
-            keyword,
-            items: [],
-            error: "공식 법령 후보를 불러오지 못했습니다.",
-            reason: "upstream-xml-response",
-          },
-          debug,
-          {
-            ...debugInfoWithOc,
-            upstreamStatus,
-            upstreamContentType,
-            rawTextPreview,
-          },
+          debugInfo,
         ),
         { status: 502 },
       );
@@ -410,9 +306,7 @@ export async function GET(request: Request) {
 
     try {
       parsed = JSON.parse(rawText);
-    } catch (error) {
-      console.error("[law-search-route] JSON 파싱 실패", error);
-
+    } catch {
       return NextResponse.json(
         withDebug(
           {
@@ -420,83 +314,28 @@ export async function GET(request: Request) {
             keyword,
             items: [],
             error: "공식 법령 후보를 불러오지 못했습니다.",
-            reason: "json-parse-failed",
           },
           debug,
-          {
-            ...debugInfoWithOc,
-            upstreamStatus,
-            upstreamContentType,
-            rawTextPreview,
-          },
+          debugInfo,
         ),
         { status: 502 },
       );
     }
 
-    const parsedTopLevelKeys = Object.keys(asRecord(parsed) ?? {});
-    const extracted = extractItems(parsed);
-    const parsedRecord = asRecord(parsed);
-    const upstreamErrorMessage =
-      getString(parsedRecord ?? {}, ["result"]) !== "success"
-        ? getString(parsedRecord ?? {}, ["msg", "message", "error"])
-        : "";
-
-    if (extracted.items.length === 0) {
-      const reason =
-        upstreamErrorMessage
-          ? "upstream-api-error"
-          : extracted.detectedResultPath === "unmatched"
-            ? "response-structure-mismatch"
-            : "no-search-results";
-
-      return NextResponse.json(
-        withDebug(
-          {
-            ok: true,
-            keyword,
-            items: [],
-            reason,
-            error: upstreamErrorMessage || undefined,
-          },
-          debug,
-          {
-            ...debugInfoWithOc,
-            upstreamStatus,
-            upstreamContentType,
-            rawTextPreview,
-            parsedTopLevelKeys,
-            detectedResultPath: extracted.detectedResultPath,
-            itemCountBeforeNormalize: extracted.itemCountBeforeNormalize,
-            itemCountAfterNormalize: extracted.itemCountAfterNormalize,
-          },
-        ),
-      );
-    }
+    const items = extractItems(parsed);
 
     return NextResponse.json(
       withDebug(
         {
           ok: true,
           keyword,
-          items: extracted.items,
+          items,
         },
         debug,
-        {
-          ...debugInfoWithOc,
-          upstreamStatus,
-          upstreamContentType,
-          rawTextPreview,
-          parsedTopLevelKeys,
-          detectedResultPath: extracted.detectedResultPath,
-          itemCountBeforeNormalize: extracted.itemCountBeforeNormalize,
-          itemCountAfterNormalize: extracted.itemCountAfterNormalize,
-        },
+        debugInfo,
       ),
     );
-  } catch (error) {
-    console.error("[law-search-route] 공식 법령 후보 조회 실패", error);
-
+  } catch {
     return NextResponse.json(
       withDebug(
         {
@@ -504,10 +343,9 @@ export async function GET(request: Request) {
           keyword,
           items: [],
           error: "공식 법령 후보를 불러오지 못했습니다.",
-          reason: "request-failed",
         },
         debug,
-        debugInfoWithOc,
+        baseDebugInfo,
       ),
       { status: 502 },
     );
