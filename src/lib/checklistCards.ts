@@ -85,6 +85,17 @@ export type ChecklistIssue = {
   priority: ChecklistPriority;
 };
 
+export type ResultCategory =
+  | "입지"
+  | "용도"
+  | "면적"
+  | "피난·방화"
+  | "주차"
+  | "편의시설"
+  | "공공건축"
+  | "조례"
+  | "특수조건";
+
 export const defaultCaution =
   "본 결과는 법적 확정 판단이 아니며, 공식 법령과 인허가권자 확인이 필요합니다.";
 
@@ -574,3 +585,37 @@ export const checklistIssueTemplates: ChecklistIssueTemplate[] = [
     priority: "놓치기 쉬운 항목",
   }),
 ];
+
+export function getResultCategory(issueType: IssueType): ResultCategory {
+  switch (issueType) {
+    case "입지 가능성 검토":
+    case "대지와 도로 관계 검토":
+      return "입지";
+    case "용도 허용 여부 검토":
+    case "용도지역 / 지구 / 구역 검토":
+    case "지구단위계획 검토":
+    case "법규 충돌 또는 별도 법령 확인 필요":
+      return "용도";
+    case "건폐율 / 용적률 / 높이 검토":
+      return "면적";
+    case "피난·방화 기준 검토":
+    case "소방시설 검토":
+    case "에너지 / 친환경 관련 검토":
+      return "피난·방화";
+    case "주차 기준 검토":
+      return "주차";
+    case "장애인·노인·임산부 편의시설 검토":
+      return "편의시설";
+    case "공공건축 관련 검토":
+      return "공공건축";
+    case "지자체 조례 확인 필요":
+      return "조례";
+    case "문화재 관련 검토":
+    case "하천 관련 검토":
+    case "학교환경 관련 검토":
+    case "산지 / 농지 관련 검토":
+      return "특수조건";
+    default:
+      return "특수조건";
+  }
+}

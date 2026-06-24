@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ChecklistIssue } from "@/src/lib/checklistCards";
+import { getResultCategory, type ChecklistIssue } from "@/src/lib/checklistCards";
 
 const categoryStyles: Record<
   ChecklistIssue["priority"],
@@ -35,17 +35,23 @@ export default function ChecklistDetailCard({
 }) {
   const [open, setOpen] = useState(false);
   const categoryStyle = categoryStyles[item.priority];
+  const resultCategory = getResultCategory(item.issueType);
 
   return (
     <article className={`surface-card p-6 md:p-7 ${categoryStyle.borderClass}`}>
       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div className="space-y-5">
           <div className="space-y-3">
-            <span
-              className={`inline-flex items-center border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${categoryStyle.badgeClass}`}
-            >
-              {categoryStyle.label}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${categoryStyle.badgeClass}`}
+              >
+                {categoryStyle.label}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                {resultCategory}
+              </span>
+            </div>
             <h3 className="text-[22px] font-semibold tracking-[-0.03em] text-slate-900">
               {item.title}
             </h3>
